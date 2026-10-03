@@ -69,7 +69,7 @@ languages of its own. Concretely, a boot loader, a kernel, a file system, an int
 shell, an interpreted scripting language, and a compiled language with its virtual
 machine. Then the tools that build all of it: an assembler, a C compiler and a linker.
 
-\section{The System}\label{sec:system}
+\section{\sysname}\label{sec:system}
 
 \paragraph{Boot and kernel.} The BIOS loads a 512-byte boot sector, which loads a second
 stage. The second stage enables the A20 line, loads the kernel, installs a flat GDT and
@@ -94,10 +94,41 @@ stack bytecode, and \texttt{exec} runs it in a VM that supports recursion. A tur
 battle game, added last, can be played from the keyboard or entirely over the serial
 port, so that another agent can play it.
 
-\paragraph{Toolchain.} \texttt{toolchain/} holds an assembler for the NASM subset the OS
-uses, a compiler for a C dialect called tinyC, and a two-mode ELF32 linker. The host
-\texttt{gcc} is invoked exactly once, to compile the first generation of this toolchain.
-Table~\ref{tab:size} gives the size of each part.
+\paragraph{The \sysname{} toolchain.} Three tools replace \texttt{nasm}, \texttt{gcc},
+\texttt{ld} and \texttt{objcopy}:
+\begin{itemize}
+  \item an \emph{assembler} for the subset of NASM syntax that the OS's assembly files
+        and the compiler's output use, with no macro preprocessor. It writes either a
+        flat binary (the boot sectors) or an ELF32 relocatable object;
+  \item a \emph{C compiler} for tinyC, a C dialect scoped to what the code base needs:
+        \texttt{\#include} and constant \texttt{\#define} only, structs, unions, enums
+        and function pointers, no type wider than 32 bits. It emits assembly text for the
+        assembler, either freestanding for the kernel or as a static Linux program that
+        calls the kernel directly through system calls;
+  \item a \emph{linker} that merges ELF32 objects, applies the two x86 relocation types
+        the assembler produces, and writes either the flat kernel image or a static
+        Linux executable. Writing the flat image itself made \texttt{objcopy}
+        unnecessary.
+\end{itemize}
+A minimal C library (unbuffered \texttt{FILE} I/O, a bump allocator, a subset of
+\texttt{printf}) lets the toolchain's own source, which uses ordinary libc calls, be
+compiled by the toolchain. Table~\ref{tab:size} gives the size of each part.
+
+\paragraph{Bootstrap path.} The toolchain is written in C, so its very first binary has
+to come from a compiler that already exists. The host C compiler (\texttt{gcc} by
+default, any C compiler will do) is used exactly once, to build Stage~1 of the
+toolchain from its source. Stage~1 then compiles the same source into Stage~2, and
+Stage~2 compiles it again into Stage~3. Let $S_i$ be the binaries of stage $i$. The
+bootstrap is accepted only when
+\begin{equation}\label{eq:fixpoint}
+  S_2 = S_3 \quad \text{byte for byte, for each of } \texttt{as},\ \texttt{cc},\ \texttt{ld}.
+\end{equation}
+Equation~\eqref{eq:fixpoint} shows that the compiler compiles itself to the same result
+it was compiled to, so the bytes of Stage~2 come from the toolchain's own code
+generator, not from the host compiler's. Stage~2 then
+builds the boot loader, the kernel and the disk-image tool; the host compiler never
+compiles any of them. The emulator, \texttt{qemu-system-i386}, stays external: it is the
+machine \sysname{} runs on, not part of what builds it.
 
 \input{gen/tab-size}
 
@@ -125,16 +156,10 @@ compiler emits. The kernel source was first rewritten into the tinyC dialect whi
 building with \texttt{gcc} (phase T3), so that each change could be checked as
 behavior-preserving before the new toolchain was in the loop.
 
-\paragraph{The fixed point.} Phase T8 compiles the toolchain three times: Stage~1 with
-\texttt{gcc}, Stage~2 with Stage~1, and Stage~3 with Stage~2. Let $S_i$ be the binaries of
-stage $i$. The bootstrap is accepted only when
-\begin{equation}\label{eq:fixpoint}
-  S_2 = S_3 \quad \text{byte for byte, for each of } \texttt{as},\ \texttt{cc},\ \texttt{ld}.
-\end{equation}
-Equation~\eqref{eq:fixpoint} shows that the compiler compiles itself to the same result
-it was compiled to. Getting there required features the toolchain had never needed for
-the kernel: variadic functions, multi-dimensional arrays, and a minimal C library
-written for the purpose.
+\paragraph{The fixed point.} Phase T8 implemented the bootstrap path and reached
+Equation~\eqref{eq:fixpoint}. Compiling the toolchain with itself required features it
+had never needed for the kernel: variadic functions, multi-dimensional arrays, and the
+minimal C library.
 
 \section{What the Human Did}\label{sec:human}
 
