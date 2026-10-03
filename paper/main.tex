@@ -40,6 +40,16 @@ as xv6~\cite{cox2006xv6} show how much fits in a few thousand lines. Below the k
 there is no runtime to report a mistake. A wrong descriptor table entry resets the
 machine, and an I/O instruction with the wrong operand size corrupts the disk silently.
 
+There are precedents for agents building large systems from nothing. A team of 16 Claude
+agents wrote a C compiler that builds Linux, but it relies on GCC's assembler and
+linker~\cite{carlini2026ccc}. Hundreds of agents built a web browser in a
+week~\cite{lin2026scaling}. Claude Fable 5 wrote the core of an NT-style kernel that boots
+in QEMU~\cite{suiche2026ntoskrnl}. All of them are built with existing compilers, so
+part of what runs was produced by tools no agent wrote. To the best of our knowledge, no
+one has reported a bootstrapped operating system written by an agent: one whose
+assembler, compiler and linker were also written by the agent, compile themselves to a
+fixed point, and are the only tools that build the OS. \sysname{} is such a system.
+
 This paper reports what Claude built, how much the human contributed, and which defects
 the agent hit. Our data are the git history of the
 system\footnote{\url{https://github.com/monperrus/boot-to-claude}, commit \ospin{}.} and
@@ -328,16 +338,47 @@ on QEMU only; real hardware is less forgiving.
 
 \section{Related Work}\label{sec:related}
 
-HumanEval~\cite{chen2021codex} measures function-level synthesis, and
-SWE-bench~\cite{jimenez2024swebench} measures issue resolution in existing repositories.
-\sysname{} is a single construction of a whole system from scratch. xv6~\cite{cox2006xv6}
-is the natural size reference for a teaching kernel; unlike \sysname{}, it is
-multi-processor and has processes and paging. seL4~\cite{klein2009sel4} shows that a
-kernel can be built against a machine-checked specification. Its checks are proofs; the
-checks here are tests that boot the machine. Thompson's Turing lecture on trusting
+\paragraph{Complex systems built by coding agents.} Since 2025, practitioners have
+reported coding agents building systems far beyond single features, mostly in blog posts
+rather than papers. The closest to \sysname{} is Anthropic's C compiler~\cite{carlini2026ccc}:
+16 parallel Claude Opus 4.6 agents, nearly 2{,}000 sessions and about \$20{,}000 produced a
+100{,}000-line Rust compiler that builds Linux 6.9 for three architectures. It has no
+assembler or linker of its own and calls GCC for 16-bit x86 code, whereas \sysname{} owns
+its assembler, compiler and linker and reaches a self-hosting fixed point, at a far
+smaller scale. Its author used GCC as the oracle, compiling a random part of the kernel
+with GCC and the rest with the new compiler to locate failures. Cursor ran hundreds of
+agents for about a week in a planner, worker and judge hierarchy to build FastRender, a
+web browser of over a million lines~\cite{lin2026scaling}. Huntley ran Claude in a loop
+with a single prompt for three months and obtained \emph{cursed}, a programming language
+with an LLVM back end~\cite{huntley2025cursed}. Stenström built JustHTML, an HTML5 parser
+that passes the 9{,}200 tests of html5lib-tests, and states the lesson this paper also
+draws: \emph{``you need a way for them to understand their own progress. A complete test
+suite is perfect for that''}~\cite{stenstrom2025justhtml}. Closest in domain, Suiche
+reports that Claude Fable 5 wrote the core of \texttt{ntoskrnl-rs}, an NT-style x86-64
+kernel in Rust that boots in QEMU and passes its self-tests, in 38 minutes of active
+work~\cite{suiche2026ntoskrnl}. Three things set \sysname{} apart: one agent in one
+session, with no multi-agent orchestration; a whole stack from boot sector to a
+self-hosted toolchain with no third-party compiler left in the build; and a public
+transcript from which every number here is computed.
+
+\paragraph{Benchmarks for building from scratch.} HumanEval~\cite{chen2021codex} measures
+function-level synthesis, and SWE-bench~\cite{jimenez2024swebench} measures issue
+resolution in existing repositories. Commit0~\cite{zhao2025commit0} asks agents to
+implement 54 Python libraries from a specification and unit tests. ProjectEval~\cite{liu2025projecteval}
+and ProjDevBench~\cite{lu2026projdevbench} evaluate whole projects generated from natural
+language requirements. In all of them the oracle is given to the agent. In \sysname{} the
+agent wrote its oracles too (Section~\ref{sec:defects}).
+
+\paragraph{Agents that play games.} In Claude Plays Pokémon, Claude plays Pokémon Red
+through an emulator, reading the screen and pressing buttons~\cite{techcrunch2025pokemon}.
+Tiny Monsters reverses the setup: the agent wrote the game, the OS under it and the
+toolchain that built both, and designed a text interface over the serial port so that an
+agent can play without reading pixels.
+
+\paragraph{Trusting a self-hosted toolchain.} Thompson's Turing lecture on trusting
 compilers~\cite{thompson1984trusting} is the classic warning that a self-hosted toolchain
-is only as trustworthy as its first generation. Here that generation is built by
-\texttt{gcc} from source the agent wrote.
+is only as trustworthy as its first generation. Here that generation is built by the host
+C compiler from source the agent wrote.
 
 \section{Conclusion}\label{sec:conclusion}
 
