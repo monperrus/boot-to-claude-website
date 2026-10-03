@@ -43,12 +43,15 @@ machine, and an I/O instruction with the wrong operand size corrupts the disk si
 There are precedents for agents building large systems from nothing. A team of 16 Claude
 agents wrote a C compiler that builds Linux, but it relies on GCC's assembler and
 linker~\cite{carlini2026ccc}. Hundreds of agents built a web browser in a
-week~\cite{lin2026scaling}. Claude Fable 5 wrote the core of an NT-style kernel that boots
-in QEMU~\cite{suiche2026ntoskrnl}. All of them are built with existing compilers, so
-part of what runs was produced by tools no agent wrote. To the best of our knowledge, no
-one has reported a bootstrapped operating system written by an agent: one whose
-assembler, compiler and linker were also written by the agent, compile themselves to a
-fixed point, and are the only tools that build the OS. \sysname{} is such a system.
+week~\cite{lin2026scaling}. A month before this work, Claude Fable 5 wrote the core of an
+NT-style kernel in Rust, with a scheduler and a memory manager, that boots in
+QEMU~\cite{suiche2026ntoskrnl}. All of them are compiled by existing, human-written
+compilers (GCC, \texttt{rustc}), so every instruction that runs was chosen by a code
+generator no agent wrote. To the best of our knowledge, no one has reported a
+bootstrapped operating system written by an AI: one where the AI wrote not only the OS
+but also the assembler, compiler and linker that build it, where that toolchain compiles
+itself to a byte-identical fixed point, and where it is the only toolchain that ever
+compiles the OS. \sysname{} is such a system.
 
 \paragraph{Methodology.} One human gave one Claude Code agent (\sessionmodel{}) a goal
 and an empty repository, and let it work in a single session. The human set goals,
@@ -401,7 +404,11 @@ draws: \emph{``you need a way for them to understand their own progress. A compl
 suite is perfect for that''}~\cite{stenstrom2025justhtml}. Closest in domain, Suiche
 reports that Claude Fable 5 wrote the core of \texttt{ntoskrnl-rs}, an NT-style x86-64
 kernel in Rust that boots in QEMU and passes its self-tests, in 38 minutes of active
-work~\cite{suiche2026ntoskrnl}. Three things set \sysname{} apart: one agent in one
+work, in June 2026~\cite{suiche2026ntoskrnl}. As a kernel it is more ambitious than
+\sysname{}'s: it has a scheduler, a memory manager with page tables, and interrupt-driven
+timers, and later work ran unmodified Windows drivers and programs. But it is a Rust
+project compiled by \texttt{rustc}, and its core has no file system, shell or user
+programs. Three things set \sysname{} apart: one agent in one
 session, with no multi-agent orchestration; a whole stack from boot sector to a
 self-hosted toolchain with no third-party compiler left in the build; and a public
 transcript from which every number here is computed.
