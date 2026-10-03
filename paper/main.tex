@@ -48,30 +48,26 @@ this paper is computed from these two sources by a script.
 
 \section{Goal}\label{sec:goal}
 
+\paragraph{What we want to demonstrate.} The opening prompt stated the criterion:
+\emph{``the goal is that 100\% of lines of code come from Claude.''} We make it precise
+as two claims.
+\begin{description}
+  \item[Full AI-written stack.] No line of the system or of its build path is written by
+        a human or taken from an existing project. This rules out a third-party compiler
+        too: a C compiler is code, and a system built by \texttt{gcc} is partly
+        \texttt{gcc}'s. The only exceptions are the emulator, which plays the role of
+        the hardware, and one use of the host compiler to start the bootstrap.
+  \item[Full bootstrap.] The toolchain is good enough to build itself, and the proof is
+        a fixed point: compiling the compiler with itself yields the same bytes twice in
+        a row. A quine is a program that prints its own source code. \sysname{} is
+        named after the toolchain's equivalent: it rebuilds itself and gets the same bytes.
+\end{description}
+
 \paragraph{What we build.} A complete, if small, computing system: something that boots
 on a bare (emulated) PC, stores files, and lets a user write and run programs in
 languages of its own. Concretely, a boot loader, a kernel, a file system, an interactive
 shell, an interpreted scripting language, and a compiled language with its virtual
 machine. Then the tools that build all of it: an assembler, a C compiler and a linker.
-
-\paragraph{What we want to demonstrate.} The opening prompt stated the criterion:
-\emph{``the goal is that 100\% of lines of code come from Claude.''} We make it precise
-as three claims.
-\begin{description}
-  \item[Total authorship.] No line of the system or of its build path is written by a
-        human or taken from an existing project. This rules out a third-party compiler
-        too: a C compiler is code, and a system built by \texttt{gcc} is partly
-        \texttt{gcc}'s. The only exceptions are the emulator, which plays the role of
-        the hardware, and one use of the host compiler to start the bootstrap.
-  \item[Self-reference.] The toolchain is good enough to build itself, and the proof is
-        a fixed point: compiling the compiler with itself yields the same bytes twice in
-        a row. A quine is a program that prints its own source code. \sysname{} is
-        named after the toolchain's equivalent: it rebuilds itself and gets the same bytes.
-  \item[Human as client, not programmer.] The human states goals and answers questions.
-        The human does not write, edit, or review code line by line.
-\end{description}
-Section~\ref{sec:human} measures the third claim, and Section~\ref{sec:defects} examines
-how the agent kept the system correct without a human reviewer.
 
 \section{The System}\label{sec:system}
 
