@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -120,10 +121,27 @@ def loc(repo: Path) -> dict[str, int]:
         if not name.endswith(SOURCE_EXT):
             continue
         n = git(repo, "show", f"{OS_REPO[1]}:{name}").count("\n")
-        for _, prefix, _ in SIZE_ROWS:
+        for prefix in [p for _, p, _ in SIZE_ROWS] + GAME_FILES:
             if name.startswith(prefix):
                 counts[prefix] += n
     return dict(counts)
+
+
+GAME_FILES = ["kernel/vga.c", "kernel/font.c", "kernel/game/sprites.c", "kernel/game/battle_gui.c",
+              "kernel/game/game.c", "kernel/input.c"]
+PROMPT_TABLE_LAST = "start the game and play for 5 minutes"
+PLAY_REPORT = re.compile(r"played (\d+) game runs across a real 5-minute \((\d+)s\) session")
+
+
+def play_session(rows: list[dict]) -> tuple[int, int]:
+    """(runs, seconds) of the agent's serial play session, from its own report."""
+    for r in rows:
+        if r.get("type") != "assistant":
+            continue
+        for c in r["message"].get("content") or []:
+            if isinstance(c, dict) and c.get("type") == "text" and (m := PLAY_REPORT.search(c["text"])):
+                return int(m.group(1)), int(m.group(2))
+    raise AssertionError("play session report not found in transcript")
 
 
 # ---- transcript ----------------------------------------------------------------
@@ -282,7 +300,7 @@ def analyse() -> dict:
     return {
         "commits": cs, "segs": segs, "loc": loc(os_repo), "defects": defects,
         "usage": usage, "models": models, "tools": tools, "compactions": compactions,
-        "answers": ans, "approvals": approvals,
+        "answers": ans, "approvals": approvals, "play": play_session(rows),
         "plan_to_os": last_os.when - approvals[0],
         "recommended": sum(a.count("(Recommended)") for _, a in ans),
         "questions": sum(a.count('"=') for _, a in ans),
@@ -361,15 +379,22 @@ def write(st: dict) -> None:
         f"\\caption{{Size of \\texttt{{boot-to-claude}} at commit \\texttt{{{OS_REPO[1][:7]}}}, "
         "in physical lines including comments.}\n\\label{tab:size}\n\\end{table}\n")
 
+    # The table stops at the request to play the game; later prompts are screencast
+    # errands (recording, converting, hosting) and the graphical screen, quoted in the text.
+    shown = st["prompts"]
+    last = next(i for i, (_, p) in enumerate(shown) if PROMPT_TABLE_LAST in p)
+    shown, omitted = shown[:last + 1], len(shown) - last - 1
     prow = []
-    for t, text in st["prompts"]:
+    for t, text in shown:
         one = " ".join(text.split())
         if len(one) > 300:
             one = one[:297] + "..."
         prow.append(f"{t.astimezone(CEST).strftime('%b %d, %H:%M')} & {tex_escape(one)} \\\\")
     (GEN / "tab-prompts.tex").write_text(head + "\\begin{table}[h]\n\\begin{tabular}{lp{11cm}}\n"
         "Time (CEST) & Prompt \\\\\n\\hline\n" + "\n".join(prow) + "\n\\end{tabular}\n"
-        "\\caption{Every human prompt in the session, verbatim, cut at 300 characters.}\n"
+        f"\\caption{{The human prompts of the session, verbatim, up to the request to play the "
+        f"game. The {omitted} later prompts are about recording and hosting screencasts and "
+        "the graphical battle screen.}\n"
         "\\label{tab:prompts}\n\\end{table}\n")
 
     total_active = sum((s.active() for s in segs.values()), timedelta())
@@ -398,6 +423,14 @@ def write(st: dict) -> None:
         "ncommits": len(st["commits"]),
         "sessionmodel": f"\\texttt{{{model}}}",
         "ospin": f"\\texttt{{{OS_REPO[1][:7]}}}",
+        "gamerules": st["loc"]["kernel/game/game.c"],
+        "gamegui": st["loc"]["kernel/game/battle_gui.c"],
+        "gamesprites": st["loc"]["kernel/game/sprites.c"],
+        "vgadriver": st["loc"]["kernel/vga.c"],
+        "fontlines": st["loc"]["kernel/font.c"],
+        "inputlines": st["loc"]["kernel/input.c"],
+        "playruns": st["play"][0],
+        "playseconds": st["play"][1],
     }
     (GEN / "stats.tex").write_text(head + "".join(
         f"\\newcommand{{\\{k}}}{{{v}}}\n" for k, v in macros.items()))

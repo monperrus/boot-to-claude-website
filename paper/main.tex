@@ -90,9 +90,8 @@ image, so there is a single implementation of the on-disk format. The shell offe
 \texttt{ls}, \texttt{cat}, \texttt{write}, \texttt{rm}, \texttt{run}, \texttt{build} and
 \texttt{exec}. \texttt{run} executes a dynamically typed script with a tree-walking
 interpreter. \texttt{build} compiles a statically scoped, integer-only C-like language to
-stack bytecode, and \texttt{exec} runs it in a VM that supports recursion. A turn-based
-battle game, added last, can be played from the keyboard or entirely over the serial
-port, so that another agent can play it.
+stack bytecode, and \texttt{exec} runs it in a VM that supports recursion. The shell's
+\texttt{play} command starts a game, described in Section~\ref{sec:game}.
 
 \paragraph{The \sysname{} toolchain.} Three tools replace \texttt{nasm}, \texttt{gcc},
 \texttt{ld} and \texttt{objcopy}:
@@ -132,6 +131,63 @@ machine \sysname{} runs on, not part of what builds it.
 
 \input{gen/tab-size}
 
+\section{Tiny Monsters: A Game Made for an AI Player}\label{sec:game}
+
+The last thing the human asked for was not infrastructure but fun: \emph{``implement in
+tinyos a Pokemon like game such that an AI agent later plays over serial port.''} The
+result, \emph{Tiny Monsters}, is the most visible demonstration of the full AI-written
+stack. Every pixel in Figure~\ref{fig:battle} is drawn by code Claude wrote, compiled by
+the compiler Claude wrote, on a kernel Claude wrote, and the game was first played by
+Claude.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig/battle.png}
+\caption{Tiny Monsters running on \sysname{} in QEMU, four frames from the agent's own
+screencast. Top left: choosing a starter. Top right: a mirror match, Emberpup against a
+wild Emberpup. Bottom: Fire beats Grass; Flame Burst takes the wild Leafling down until
+it faints. Sprites, font, HP bars and dialogue box are drawn by \sysname{}'s VGA driver;
+there is no image file anywhere in the system.}
+\label{fig:battle}
+\end{figure}
+
+\paragraph{Rules.} Three species, Emberpup, Aqualing and Leafling, one per type in a
+rock-paper-scissors cycle: Fire beats Grass, Grass beats Water, Water beats Fire. A move
+with the type advantage does 1.5 times its damage, one against it half. The player picks
+a starter and meets wild monsters whose HP grows with each win. HP does not regenerate,
+and five wins make the player Champion.
+
+\paragraph{Made for a machine player.} Until then the kernel only read the keyboard; the
+serial port was output only. The agent added serial input and made the shell and the
+game poll both sources (\inputlines{} lines in \texttt{input.c}), so a human at the
+keyboard and a program on the serial line can drive the same session interchangeably.
+The game speaks a plain text protocol: it prints the screen as text, and reads a digit,
+\texttt{run} or \texttt{quit}. Asked to play for five minutes, the agent connected a
+script to QEMU's serial socket and played \playruns{} runs in \playseconds{} seconds,
+restarting after each faint. Playing found a real bug: the random move picker took a
+modulo of a 32-bit value with the sign bit set, which \sysname{}'s compiler only supports
+as signed division, and read a garbage move name with absurd damage.
+
+\paragraph{A graphical battle screen.} Asked next for \emph{``a good looking GUI like
+Pokemon Ruby on GBA''}, the agent wrote a driver for VGA mode 13h (320$\times$200, 256
+colors) that programs the video card's registers directly, without BIOS calls
+(\vgadriver{} lines), and a bitmap font of its own design (\fontlines{} lines). The three
+monsters are not images: \texttt{sprites.c} draws them from filled circles, ellipses and
+triangles in \gamesprites{} lines. The battle scene, with sky, ground, platforms, HP bars
+and a dialogue box, takes \gamegui{} lines on top of the \gamerules{} lines of game
+logic. The graphics are purely additive: the text sent over serial is byte for byte the
+same, so the machine player sees no difference. Returning to the shell restores text
+mode, which took a debugging session of its own because mode 13h overwrites the video
+memory plane where the text font lives.
+
+\paragraph{Screencasts.} The agent recorded both versions and published them at the
+human's request: the five-minute serial
+session\footnote{\url{https://www.monperrus.net/martin/pubdir/boot-to-claude-tiny-monsters-screencast.mp4}}
+and the graphical battle
+screen.\footnote{\url{https://www.monperrus.net/martin/pubdir/boot-to-claude-tiny-monsters-gui-screencast.mp4}}
+For the second, it drove the game with emulated keystrokes and captured QEMU's frame
+buffer, after fixing two bugs in its own capture script along the way.
+
 \section{How It Was Built}\label{sec:history}
 
 The work happened in one Claude Code session using \sessionmodel{}, with
@@ -163,7 +219,7 @@ minimal C library.
 
 \section{What the Human Did}\label{sec:human}
 
-Table~\ref{tab:prompts} lists every prompt. Three kinds stand out.
+Table~\ref{tab:prompts} lists the prompts up to the game. Three kinds stand out.
 
 \paragraph{Goals.} Five prompts set the direction: the opening request, the request for
 a self-hosted toolchain, a request to install the compiler inside the OS, a game an agent
