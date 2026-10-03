@@ -111,10 +111,10 @@ The work happened in one Claude Code session using \sessionmodel{}, with
 \nassistant{} model responses and \ntoolcalls{} tool calls, of which \nbash{} shell
 commands and \nedit{} file writes or edits. The context window filled up and was
 summarized \ncompactions{} times. Table~\ref{tab:timeline} splits the session at each
-phase commit. Of the \ncommits{} commits in the repository, all but two were made by the
-agent in this session. The other two are the initial empty commit and a ten-line
-Makefile target for running QEMU with a display, which Claude wrote in a separate
-session and the human committed.
+phase commit. Of the \ncommits{} commits in the repository, all but two were committed by
+the agent. The other two are the initial empty commit and a ten-line Makefile target for
+running QEMU with a display. The agent wrote that target in response to the human's
+report that typing showed nothing, and the human ran \texttt{git commit}.
 
 \input{gen/tab-timeline}
 

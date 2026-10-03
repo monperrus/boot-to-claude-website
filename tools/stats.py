@@ -209,6 +209,17 @@ def analyse() -> dict:
     agent = [c for c in cs if in_session(c)]
     outside = [c for c in cs if not in_session(c)]
     assert {c.sha for c in outside} == {"17c6619", "e640d0c"}, [c.sha for c in outside]
+    # e640d0c was committed by the human, but its content was written by the agent in this
+    # session: an Edit to the Makefile adding the run-gui target precedes the commit.
+    gui = next(c for c in outside if c.sha == "e640d0c")
+    assert any(
+        r.get("type") == "assistant" and ts(r) < gui.when
+        and any(isinstance(c, dict) and c.get("name") == "Edit"
+                and c["input"].get("file_path", "").endswith("/Makefile")
+                and "run-gui" in c["input"].get("new_string", "")
+                for c in r["message"].get("content") or [])
+        for r in rows
+    )
     assert all(c.sha in {x.sha for x in agent} for c in cs if c.sha in PHASES)
 
     # Segment the transcript: an event belongs to the first phase commit at or after it.
