@@ -6,6 +6,12 @@ Write a LaTeX paper whose source of truth is `paper/main.tex`, compiled to a
 claude.ai artifact (an HTML page) that **always stays in sync** with the source.
 A commit where the published artifact differs from what the source builds to is a bug.
 
+## Paper
+
+Topic: Claude writes an operating system. Data source: https://github.com/monperrus/boot-to-claude
+(numbers in the paper are pinned to a commit stated in its introduction). Every number in
+the paper must be recomputable from that repository; no invented facts.
+
 ## Layout
 
 - `paper/main.tex`, `paper/refs.bib`: the paper. Edit only these (and figures in `paper/`).
