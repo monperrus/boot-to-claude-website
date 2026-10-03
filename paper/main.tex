@@ -50,11 +50,32 @@ one has reported a bootstrapped operating system written by an agent: one whose
 assembler, compiler and linker were also written by the agent, compile themselves to a
 fixed point, and are the only tools that build the OS. \sysname{} is such a system.
 
-This paper reports what Claude built, how much the human contributed, and which defects
-the agent hit. Our data are the git history of the
+\paragraph{Methodology.} One human gave one Claude Code agent (\sessionmodel{}) a goal
+and an empty repository, and let it work in a single session. The human set goals,
+answered the agent's questions and said ``go'', but wrote no code. We study two
+artifacts: the git history of the
 system\footnote{\url{https://github.com/monperrus/boot-to-claude}, commit \ospin{}.} and
-the complete transcript of the Claude Code session that produced it. Every number in
-this paper is computed from these two sources by a script.
+the complete transcript of the session, with every prompt, model response, tool call and
+tool output. Every number in this paper is computed from these two sources by a script,
+including how often the agent ran each oracle and how often the oracle said no.
+
+\paragraph{Results.} \sysname{} boots through its own boot loader into a kernel with a
+file system, a shell, a scripting language and a compiler to bytecode. Its assembler, C
+compiler and linker were written by the agent and compile themselves to byte-identical
+binaries. From plan approval, the OS with both languages took \plantoosmin{} minutes;
+the toolchain took \tcactivehours{} hours of agent activity. The human typed
+\nprompts{} prompts, \nshortprompts{} of them three words or fewer. The agent ran its
+scripted oracles \noraclesruns{} times and saw \noraclesfailed{} failures, most of them
+while switching the build to its own toolchain, and fixed \ndefects{} defects that its
+commit messages report.
+
+\paragraph{A game for an AI player.} The last request was for fun: a Pokémon-like game
+that an AI agent could play over the serial port. Claude wrote \emph{Tiny Monsters}, then
+a graphical battle screen in the style of the Game Boy Advance games, drawn pixel by
+pixel by its own VGA driver, and then played the game itself, \playruns{} runs in five
+minutes. Anthropic has shown Claude playing Pokémon Red~\cite{techcrunch2025pokemon};
+here Claude also wrote the game, the operating system under it, and the compiler that
+built both.
 
 \section{Goal}\label{sec:goal}
 
