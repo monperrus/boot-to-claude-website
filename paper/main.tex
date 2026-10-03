@@ -79,20 +79,44 @@ built both.
 
 \section{Goal}\label{sec:goal}
 
-\paragraph{What we want to demonstrate.} The opening prompt stated the criterion:
-\emph{``the goal is that 100\% of lines of code come from Claude.''} We make it precise
-as two claims.
+\paragraph{What we want to demonstrate.} The criterion, set in the opening prompt, is
+that 100\% of the lines of code come from the AI. The agent here is Claude, but the model
+is an implementation detail: the question is whether an AI coding agent can do it at
+all. We make the criterion precise as two claims.
 \begin{description}
   \item[Full AI-written stack.] No line of the system or of its build path is written by
         a human or taken from an existing project. This rules out a third-party compiler
         too: a C compiler is code, and a system built by \texttt{gcc} is partly
         \texttt{gcc}'s. The only exceptions are the emulator, which plays the role of
         the hardware, and one use of the host compiler to start the bootstrap.
-  \item[Full bootstrap.] The toolchain is good enough to build itself, and the proof is
-        a fixed point: compiling the compiler with itself yields the same bytes twice in
-        a row. A quine is a program that prints its own source code. \sysname{} is
-        named after the toolchain's equivalent: it rebuilds itself and gets the same bytes.
+  \item[Full bootstrap.] The AI-written toolchain builds the OS and builds itself, and
+        the proof is a fixed point: compiling the compiler with itself yields the same
+        bytes twice in a row. A quine is a program that prints its own source code.
+        \sysname{} is named after the toolchain's equivalent: it rebuilds itself and gets
+        the same bytes.
 \end{description}
+
+\paragraph{Why the bootstrap.} An OS whose source an AI wrote but which \texttt{gcc}
+compiles is still a joint work: every machine instruction that runs was chosen by a code
+generator written by people. The bootstrap removes that dependency. The host compiler is
+used once, to produce a first binary of the AI's compiler; from then on the AI's compiler
+compiles itself, and the fixed point shows that the result no longer depends on the host
+compiler's code generation. The bootstrap is also a strong test in its own right: a
+compiler that compiles its own source correctly has to handle a real, large C program
+that the AI did not write for the purpose of testing it.
+
+\paragraph{A double difficulty.} The two claims stack two hard problems. The first is
+the operating system: code that runs on bare hardware, with no runtime underneath, where
+a mistake resets the machine or corrupts data without a word. The second is a compiler
+strong enough to compile both that operating system and itself. Building a C compiler is
+hard even with abundant resources: Anthropic's team of 16 agents spent about \$20{,}000
+on a C compiler that builds Linux, and still relies on GCC's assembler and
+linker~\cite{carlini2026ccc}. \sysname{} needs a much smaller dialect of C, but also an
+assembler and a linker, and no external tool to fall back on. The two difficulties
+compound. When the OS misbehaves, the cause may be in the OS or in the compiler that
+built it, and the symptom looks the same. An \texttt{in} instruction encoded without its
+operand-size prefix, for example, showed up as a corrupted file system
+(Section~\ref{sec:defectlist}).
 
 \paragraph{What we build.} A complete, if small, computing system: something that boots
 on a bare (emulated) PC, stores files, and lets a user write and run programs in
