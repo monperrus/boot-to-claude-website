@@ -11,7 +11,7 @@ A commit where the published artifact differs from what the source builds to is 
 Topic: Claude writes an operating system, named **QuineOS** in the paper (`\sysname` in
 `main.tex`). Data sources, pinned in `tools/stats.py`:
 - https://github.com/monperrus/boot-to-claude: the OS and its git history (public).
-- https://github.com/monperrus/boot-to-claude-paper: the Claude Code transcripts (private).
+- https://github.com/monperrus/boot-to-claude-paper: the Claude Code transcripts (private for now, to be made public with the paper).
 
 Every number in the paper comes from `paper/gen/*.tex`, written by
 `.venv/bin/python tools/stats.py` (clones both repos into `data/`, needs `gh` logged in).

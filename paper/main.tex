@@ -62,8 +62,9 @@ and an empty repository, and let it work in a single session. The human set goal
 answered the agent's questions and said ``go'', but wrote no code. We study two
 artifacts: the git history of the
 system\footnote{\url{https://github.com/monperrus/boot-to-claude}, commit \ospin{}.} and
-the complete transcript of the session, with every prompt, model response, tool call and
-tool output. Every number in this paper is computed from these two sources by a script,
+the complete transcript of the
+session,\footnote{\url{https://github.com/monperrus/boot-to-claude-paper}} with every
+prompt, model response, tool call and tool output. Every number in this paper is computed from these two sources by a script,
 including how often the agent ran each oracle and how often the oracle said no.
 
 \paragraph{Results.} \sysname{} boots through its own boot loader into a kernel with a
@@ -99,9 +100,11 @@ built both.
         \noraclesruns{} times, they rejected its work \noraclesfailed{} times, and the
         most telling defects were silent ones that only an oracle booting the whole
         machine caught.
-  \item \textbf{An account where every number is computed, not recalled.} We analyse the
-        complete transcript of the session, every prompt, tool call and tool output, and
-        recompute every figure in this paper from it with a script.
+  \item \textbf{A fully transparent open-science package.} We release the system's
+        source and history, the complete transcript of the session that built it, with
+        every prompt, model response, tool call and tool output, and the scripts that
+        recompute every number, table and figure in this paper from them. Anyone can
+        check every claim we make, down to the individual tool call.
   \item \textbf{A game written by an AI, for an AI}, on a stack written by an AI from the
         boot sector up.
 \end{itemize}
