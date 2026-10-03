@@ -83,6 +83,29 @@ minutes. Anthropic has shown Claude playing Pokémon Red~\cite{techcrunch2025pok
 here Claude also wrote the game, the operating system under it, and the compiler that
 built both.
 
+\paragraph{Contributions.}
+\begin{itemize}
+  \item \textbf{The first bootstrapped operating system written by an AI}, to the best of
+        our knowledge. \sysname{} has its own boot loader, kernel, file system, shell and
+        two languages, and its own assembler, C compiler and linker, which compile
+        themselves to a byte-identical fixed point and are the only tools that build the
+        OS. No line of the stack was written by a human.
+  \item \textbf{One agent, one session, no human code.} Where comparable systems used
+        teams of 16 to hundreds of agents~\cite{carlini2026ccc,lin2026scaling}, a single
+        agent wrote \sysname{}. The OS with both languages took \plantoosmin{} minutes
+        from plan approval; the full toolchain, \tcactivehours{} hours of agent activity.
+  \item \textbf{The oracle, not the code, is what makes it possible.} We show from the
+        transcript that the agent was only as good as its oracles: it ran them
+        \noraclesruns{} times, they rejected its work \noraclesfailed{} times, and the
+        most telling defects were silent ones that only an oracle booting the whole
+        machine caught.
+  \item \textbf{An account where every number is computed, not recalled.} We analyse the
+        complete transcript of the session, every prompt, tool call and tool output, and
+        recompute every figure in this paper from it with a script.
+  \item \textbf{A game written by an AI, for an AI}, on a stack written by an AI from the
+        boot sector up.
+\end{itemize}
+
 \section{Goal}\label{sec:goal}
 
 \paragraph{What we want to demonstrate.} The criterion, set in the opening prompt, is
@@ -413,7 +436,7 @@ timers, and later work ran unmodified Windows drivers and programs. But it is a 
 project compiled by \texttt{rustc}, and its core has no file system, shell or user
 programs. Three things set \sysname{} apart: one agent in one
 session, with no multi-agent orchestration; a whole stack from boot sector to a
-self-hosted toolchain with no third-party compiler left in the build; and a public
+self-hosted toolchain with no third-party compiler left in the build; and a complete
 transcript from which every number here is computed.
 
 \paragraph{Benchmarks for building from scratch.} HumanEval~\cite{chen2021codex} measures
