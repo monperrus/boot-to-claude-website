@@ -108,10 +108,10 @@ built both.
 
 \section{Goal}\label{sec:goal}
 
-\paragraph{What we want to demonstrate.} The criterion, set in the opening prompt, is
-that 100\% of the lines of code come from the AI. The agent here is Claude, but the model
-is an implementation detail: the question is whether an AI coding agent can do it at
-all. We make the criterion precise as two claims.
+\paragraph{Claims.} We study total AI authorship of a computing system: every line of
+code, in the system and in everything that builds it, produced by an AI coding agent.
+The agent in this study is Claude, but the model is incidental; the question is whether
+total authorship is achievable by an AI agent at all. We decompose it into two claims.
 \begin{description}
   \item[Full AI-written stack.] No line of the system or of its build path is written by
         a human or taken from an existing project. This rules out a third-party compiler
@@ -125,7 +125,7 @@ all. We make the criterion precise as two claims.
         the same bytes.
 \end{description}
 
-\paragraph{Why the bootstrap.} An OS whose source an AI wrote but which \texttt{gcc}
+\paragraph{Rationale for the bootstrap.} An OS whose source an AI wrote but which \texttt{gcc}
 compiles is still a joint work: every machine instruction that runs was chosen by a code
 generator written by people. The bootstrap removes that dependency. The host compiler is
 used once, to produce a first binary of the AI's compiler; from then on the AI's compiler
@@ -134,7 +134,7 @@ compiler's code generation. The bootstrap is also a strong test in its own right
 compiler that compiles its own source correctly has to handle a real, large C program
 that the AI did not write for the purpose of testing it.
 
-\paragraph{A double difficulty.} The two claims stack two hard problems. The first is
+\paragraph{Two compounding difficulties.} The two claims stack two hard problems. The first is
 the operating system: code that runs on bare hardware, with no runtime underneath, where
 a mistake resets the machine or corrupts data without a word. The second is a compiler
 strong enough to compile both that operating system and itself. Building a C compiler is
@@ -147,7 +147,7 @@ built it, and the symptom looks the same. An \texttt{in} instruction encoded wit
 operand-size prefix, for example, showed up as a corrupted file system
 (Section~\ref{sec:defectlist}).
 
-\paragraph{What we build.} A complete, if small, computing system: something that boots
+\paragraph{Scope.} The target is a complete, if small, computing system: one that boots
 on a bare (emulated) PC, stores files, and lets a user write and run programs in
 languages of its own. Concretely, a boot loader, a kernel, a file system, an interactive
 shell, an interpreted scripting language, and a compiled language with its virtual
