@@ -1,0 +1,59 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\title{One Source, Two Renderings: Keeping a \LaTeX{} Paper and Its Web Page in Sync}
+\author{Martin Monperrus \and Claude}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A paper is typically written in \LaTeX{} and read as a PDF, while readers increasingly
+come to it through a web page. When the two are maintained separately they drift apart.
+We describe a setup where the \LaTeX{} source is the single source of truth, the web page
+is a deterministic build of it, and a commit hook refuses any commit in which the published
+page is not the build of the committed source.
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+
+Preprints are written once and rendered many times. Each manual rendering is a chance for
+the copies to disagree. Pandoc~\cite{macfarlane2006pandoc} converts \LaTeX{} to HTML with
+MathML math, so the web rendering can be computed instead of edited by hand.
+Section~\ref{sec:sync} defines what \emph{in sync} means and how it is enforced.
+
+\section{The Sync Invariant}\label{sec:sync}
+
+Let $s$ be the committed source and $b(s)$ the HTML page that the build produces from it.
+The build is deterministic, so $b(s)$ is a function of $s$ alone. Let $p$ be the page
+currently published. The repository is in sync when
+\begin{equation}\label{eq:sync}
+  h\bigl(b(s)\bigr) = h(p),
+\end{equation}
+where $h$ is SHA-256. We cannot hash $p$ remotely, so we record $h(p)$ at publish time.
+The commit hook rebuilds $b(s)$ and checks Equation~\eqref{eq:sync} against that record.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+Step & Actor & Checked by \\
+\hline
+Edit \texttt{main.tex} & author & --- \\
+Build page & script & determinism \\
+Publish page & agent & recorded hash \\
+Commit & author & pre-commit hook \\
+\end{tabular}
+\caption{The four steps of one revision.}
+\label{tab:steps}
+\end{table}
+
+\section{Conclusion}\label{sec:conclusion}
+
+Treating the web page as a build artifact turns drift into a failing check.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

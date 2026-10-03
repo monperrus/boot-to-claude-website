@@ -1,0 +1,80 @@
+<title>$pagetitle$</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+/* Layout: one reading column like a preprint, sans-condensed labels in the margin rhythm. */
+:root {
+  --bg: #f8f8f5;
+  --fg: #1b2230;
+  --muted: #5b6474;
+  --rule: #d8dce2;
+  --accent: #1f5f8b;
+  --panel: #eef0ef;
+  --serif: "Source Serif 4", "Source Serif Pro", Georgia, "Times New Roman", serif;
+  --label: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #13161c; --fg: #e2e5ea; --muted: #9aa3b2; --rule: #2b313b;
+    --accent: #84b6dc; --panel: #1a1e26; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #13161c; --fg: #e2e5ea; --muted: #9aa3b2; --rule: #2b313b;
+  --accent: #84b6dc; --panel: #1a1e26; color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--serif); font-size: 18px; line-height: 1.6;
+  padding-inline: 16px; padding-block: 48px 96px;
+}
+main { max-width: 68ch; margin-inline: auto; }
+header.paper { display: grid; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--rule); margin-bottom: 8px; }
+header.paper h1 { font-size: 2.1rem; line-height: 1.18; font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+.authors { font-family: var(--label); font-weight: 500; font-size: 0.95rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.abstract { background: var(--panel); padding: 16px 20px; border-radius: 4px; font-size: 0.95rem; }
+.abstract > .tag, figcaption .tag { font-family: var(--label); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.abstract p { margin: 6px 0 0; }
+h1, h2, h3, h4 { font-weight: 600; line-height: 1.25; text-wrap: balance; margin: 2.2em 0 0.6em; }
+main > h1 { font-size: 1.45rem; }
+main > h2 { font-size: 1.2rem; }
+main > h3 { font-size: 1.05rem; }
+.header-section-number { font-family: var(--label); font-weight: 600; color: var(--accent); margin-right: 0.55em; font-variant-numeric: tabular-nums; }
+p { margin: 0 0 1em; hyphens: auto; }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+pre { font-family: var(--mono); font-size: 0.85rem; background: var(--panel); padding: 12px 14px; overflow-x: auto; border-radius: 4px; }
+math { font-size: 1.05em; }
+.equation { display: flex; align-items: center; gap: 16px; margin: 1em 0; overflow-x: auto; }
+.equation > math { flex: 1; min-width: 0; }
+.eqno { font-family: var(--label); color: var(--muted); font-variant-numeric: tabular-nums; }
+figure { margin: 2em 0; display: grid; gap: 10px; justify-items: center; }
+figure img { max-width: 100%; height: auto; }
+figcaption { font-size: 0.88rem; color: var(--muted); max-width: 60ch; }
+.table-wrap, table { overflow-x: auto; }
+table { border-collapse: collapse; margin: 1.5em auto; font-size: 0.92rem; font-variant-numeric: tabular-nums; display: block; max-width: 100%; }
+caption { font-size: 0.88rem; color: var(--muted); padding-bottom: 8px; text-align: left; }
+th, td { padding: 6px 12px; border-bottom: 1px solid var(--rule); text-align: left; }
+thead th { border-bottom: 1.5px solid var(--fg); font-family: var(--label); font-weight: 600; }
+ul, ol { padding-left: 1.4em; }
+li + li { margin-top: 0.3em; }
+#refs { font-size: 0.9rem; display: grid; gap: 10px; }
+#refs .csl-entry { padding-left: 2em; text-indent: -2em; }
+@media (max-width: 480px) {
+  body { font-size: 17px; padding-block: 28px 64px; }
+  header.paper h1 { font-size: 1.65rem; }
+}
+</style>
+<main>
+<header class="paper">
+<h1>$title$</h1>
+$if(author)$<div class="authors">$for(author)$<span>$author$</span>$endfor$</div>$endif$
+$if(abstract)$<section class="abstract"><span class="tag">Abstract</span>
+$abstract$
+</section>$endif$
+</header>
+$body$
+</main>
