@@ -180,13 +180,10 @@ same, so the machine player sees no difference. Returning to the shell restores 
 mode, which took a debugging session of its own because mode 13h overwrites the video
 memory plane where the text font lives.
 
-\paragraph{Screencasts.} The agent recorded both versions and published them at the
-human's request: the five-minute serial
-session\footnote{\url{https://www.monperrus.net/martin/pubdir/boot-to-claude-tiny-monsters-screencast.mp4}}
-and the graphical battle
-screen.\footnote{\url{https://www.monperrus.net/martin/pubdir/boot-to-claude-tiny-monsters-gui-screencast.mp4}}
-For the second, it drove the game with emulated keystrokes and captured QEMU's frame
-buffer, after fixing two bugs in its own capture script along the way.
+\paragraph{Screencasts.} The agent recorded both versions as videos: the five-minute
+serial session, and the graphical battle screen from which Figure~\ref{fig:battle} is
+taken. For the second, it drove the game with emulated keystrokes and captured QEMU's
+frame buffer, after fixing two bugs in its own capture script along the way.
 
 \section{How It Was Built}\label{sec:history}
 
@@ -241,13 +238,65 @@ and the human moved on to the game instead.
 
 \input{gen/tab-prompts}
 
-\section{Defects and How They Were Found}\label{sec:defects}
+\section{Oracles: How the Agent Knew It Was Right}\label{sec:defects}
+
+A coding agent is as strong as its oracle. The agent proposes a change, the oracle
+judges it, and the agent iterates until the oracle agrees. Nothing in this loop needs a
+human, but everything depends on the oracle: a weak one lets defects through, a missing
+one leaves the agent guessing. \sysname{} had strong oracles, listed in
+Table~\ref{tab:oracles}, and the agent consulted them constantly: it ran the four
+scripted ones \noraclesruns{} times, and \noraclesfailed{} of those runs failed.
+
+\input{gen/tab-oracles}
+
+\paragraph{One observation channel.} Every oracle that runs the OS reads the same thing:
+the serial console. The kernel prints everything it shows on screen to COM1 as well, the
+CPU exception handlers print the faulting vector before halting, and QEMU runs headless
+with its serial port captured to a file. A crash, a hang and a wrong answer all become
+text the agent can read. The agent built this channel in phase 0, before there was
+anything to test, and kept it for six days.
+
+\paragraph{Binary verdicts.} Each scripted oracle ends with one line, \texttt{PASS} or
+\texttt{FAIL}. There is nothing to interpret. When a
+run produces neither, because the machine hung until the timeout or the build broke
+first, the absence of \texttt{PASS} is itself the failure.
+
+\paragraph{End to end.} The OS system test boots the real boot loader and kernel built by
+the toolchain under test, and drives them as a user would. Any defect anywhere on that
+path, in the assembler's encoding, the compiler's code generator or the linker's
+relocations, shows up as a wrong line on the serial console. This is what made the
+toolchain safe to replace: the OS itself is the largest test program the toolchain has.
+
+\paragraph{Fast and slow.} The toolchain tests run \ntoolchainfixtures{} small programs on
+the host in seconds; the OS test boots a machine. The agent ran them
+\ntoolchaintestruns{} and \nostestruns{} times respectively, iterating on the fast oracle
+and confirming on the slow one.
+
+\paragraph{References while they exist, a fixed point afterwards.} During the transition
+the old tools were still available, and the agent used them as a differential oracle.
+The kernel was first rewritten into the tinyC dialect while still building with
+\texttt{gcc}, so the OS test could confirm each rewrite before the new compiler was in
+the loop. The linker's flat output was compared byte for byte with \texttt{objcopy}'s.
+Once the old tools were gone, Equation~\eqref{eq:fixpoint} took over: the bootstrap
+checks the toolchain against itself and needs no reference at all.
+
+\paragraph{The oracle grows.} When the switch-over to the new toolchain surfaced a
+defect, the agent added a regression test for its class: the switch-over commit adds ten
+toolchain tests, one per bug class. \ntsevenfailed{} of the \noraclesfailed{} failing
+oracle runs happened in that phase, which is where the oracles earned their keep.
+
+\paragraph{Where the oracles are weaker.} Battle outcomes depend on a random number
+generator, so the game tests accept any end state and only check the flow. The graphical
+screen has no scripted oracle at all: the agent judged it by looking at frame-buffer
+dumps (\nimagereads{} images), the weakest check in the table.
+
+\subsection{Defects}\label{sec:defectlist}
 
 Commit messages list each defect fixed in their phase. Counting them gives \ndefects{}:
 one in phase 3, two in phase 5, three in T1, three in T2/T4, six in T5, sixteen in T7,
 eleven in T8, and one in the game. Some are missing features rather than wrong code,
 such as \texttt{switch} statements not yet supported by the compiler. Three patterns
-stand out.
+show why the end-to-end oracles mattered.
 
 \paragraph{Most defects were silent.} Few caused a crash. An \texttt{in}/\texttt{out}
 instruction encoded without its operand-size prefix read two 16-bit words per access
@@ -265,16 +314,13 @@ an array written by the kernel.
 \paragraph{The system test caught what unit tests missed.} The assembler's
 \texttt{.dq} directive computed its high 32 bits with a shift by 32, which x86 masks to a
 shift by 0. No toolchain test used \texttt{.dq}. The boot loader's disk address packet
-does, and only the full boot suite caught it. The test oracle throughout is the serial
-console: QEMU runs headless, a boot-time self-test prints \texttt{SELFTEST PASS}, and a
-script types shell commands into QEMU's monitor and compares the serial output against
-expected files.
+does, and only the OS system test caught it.
 
 \section{Threats to Validity}\label{sec:threats}
 
-Kernel and compiler code is abundant in training data, so the agent may have reproduced
-known designs rather than invented them. The defect count relies on commit messages
-written by the agent, so it counts what the agent chose to report. Active time is
+The defect count relies on commit messages written by the agent, so it counts what the
+agent chose to report. Oracle verdicts are read from the transcript by matching each
+script's \texttt{PASS} and \texttt{FAIL} lines. Active time is
 estimated from transcript timestamps, counting gaps shorter than ten minutes; a long
 build without output would be counted as idle. This is one session with one model, so
 it shows that the result is possible, not how often it happens. Finally, the system runs

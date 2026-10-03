@@ -133,6 +133,72 @@ PROMPT_TABLE_LAST = "start the game and play for 5 minutes"
 PLAY_REPORT = re.compile(r"played (\d+) game runs across a real 5-minute \((\d+)s\) session")
 
 
+# Scripted oracles: (name, script regex, pass marker, fail marker). A run whose output has
+# neither marker (output cut by `tail`, a timeout) is counted as failed when the tool
+# call itself errored, otherwise as unknown.
+ORACLES = [
+    ("os", r"run_tests\.sh", r"run_tests: PASS", r"run_tests: FAIL"),
+    ("serial", r"(run_serial_tests\.sh|serial_game_test\.py)", r"serial_game_test: PASS", r"FAIL|Traceback"),
+    ("toolchain", r"run_toolchain_tests\.sh", r"run_toolchain_tests: PASS",
+     r"run_toolchain_tests: FAIL|^FAIL t|unexpected token"),
+    ("bootstrap", r"bootstrap_selfhost\.sh", r"bootstrap: PASS", r"bootstrap: FAIL"),
+]
+
+
+def executes(cmd: str, script: str) -> bool:
+    """True if a shell command line runs `script` (not merely mentions it)."""
+    if "git commit" in cmd or "cat >" in cmd or "<<" in cmd:
+        return False
+    for seg in re.split(r"&&|\|\||;|\n|\|", cmd):
+        if re.match(r"^(timeout\s+\S+\s+)?(bash\s+|python3\s+)?(\S+=\S+\s+)*(\./)?(\S*/)?" + script + r"(\s|$)",
+                    seg.strip()):
+            return True
+    return False
+
+
+def oracle_runs(rows: list[dict]) -> tuple[dict[str, Counter[str]], list[tuple[str, datetime, str]]]:
+    """Per-oracle verdict counts, and every (oracle, time, verdict) run."""
+    cmds: dict[str, str] = {}
+    when: dict[str, datetime] = {}
+    for r in rows:
+        if r.get("type") == "assistant":
+            for c in r["message"].get("content") or []:
+                if isinstance(c, dict) and c.get("type") == "tool_use" and c["name"] == "Bash":
+                    cmds[c["id"]] = c["input"]["command"]
+                    when[c["id"]] = ts(r)
+    results: dict[str, tuple[bool, str]] = {}
+    for r in rows:
+        if r.get("type") == "user" and isinstance(r["message"].get("content"), list):
+            for x in r["message"]["content"]:
+                if isinstance(x, dict) and x.get("type") == "tool_result" and x.get("tool_use_id") in cmds:
+                    out = x.get("content")
+                    results[x["tool_use_id"]] = (bool(x.get("is_error")),
+                                                 out if isinstance(out, str) else json.dumps(out))
+    tally = {name: Counter() for name, *_ in ORACLES}
+    log = []
+    for tid, cmd in cmds.items():
+        err, out = results.get(tid, (False, ""))
+        for name, script, ok, ko in ORACLES:
+            if not executes(cmd, script):
+                continue
+            if re.search(ko, out, re.M):
+                verdict = "fail"
+            elif re.search(ok, out):
+                verdict = "pass"
+            else:
+                verdict = "fail" if err else "unknown"
+            tally[name][verdict] += 1
+            log.append((name, when[tid], verdict))
+    return tally, log
+
+
+def image_reads(rows: list[dict]) -> int:
+    return sum(1 for r in rows if r.get("type") == "assistant"
+               for c in r["message"].get("content") or []
+               if isinstance(c, dict) and c.get("name") == "Read"
+               and re.search(r"\.(png|ppm|jpg)$", c["input"].get("file_path", "")))
+
+
 def play_session(rows: list[dict]) -> tuple[int, int]:
     """(runs, seconds) of the agent's serial play session, from its own report."""
     for r in rows:
@@ -301,6 +367,15 @@ def analyse() -> dict:
         "commits": cs, "segs": segs, "loc": loc(os_repo), "defects": defects,
         "usage": usage, "models": models, "tools": tools, "compactions": compactions,
         "answers": ans, "approvals": approvals, "play": play_session(rows),
+        "oracles": oracle_runs(rows)[0], "oracle_log": oracle_runs(rows)[1],
+        "commit_time": {c.sha: c.when for c in cs},
+        "image_reads": image_reads(rows),
+        "selftest_checks": len(re.findall(r"^\s*check\(", git(os_repo, "show", f"{OS_REPO[1]}:kernel/selftest.c"),
+                                          re.M)),
+        "toolchain_fixtures": sum(1 for n in git(os_repo, "ls-tree", "--name-only", OS_REPO[1],
+                                                "tests/toolchain/").splitlines() if n.endswith(".c")),
+        "os_fixtures": sum(1 for n in git(os_repo, "ls-tree", "--name-only", OS_REPO[1],
+                                         "tests/expected/").splitlines() if n.endswith(".txt")),
         "plan_to_os": last_os.when - approvals[0],
         "recommended": sum(a.count("(Recommended)") for _, a in ans),
         "questions": sum(a.count('"=') for _, a in ans),
@@ -397,6 +472,45 @@ def write(st: dict) -> None:
         "the graphical battle screen.}\n"
         "\\label{tab:prompts}\n\\end{table}\n")
 
+    o = st["oracles"]
+
+    def runs(name: str) -> str:
+        c = o[name]
+        return f"{sum(c.values())} & {c['fail']} & {c['unknown']}"
+
+    orows = [
+        ("CPU exception handlers", "any CPU fault, e.g.\\ an invalid opcode from a mis-encoded instruction",
+         "\\texttt{EXCEPTION vector=$n$}, then halt", "\\multicolumn{3}{c}{in every boot}"),
+        ("Boot self-test", f"{st['selftest_checks']} checks: string functions, allocator with coalescing, "
+         "tinyfs create/write/read/delete", "\\texttt{SELFTEST PASS} or \\texttt{FAIL}",
+         "\\multicolumn{3}{c}{in every boot}"),
+        ("OS system test", "boots headless QEMU, types shell commands through the QEMU monitor, compares "
+         f"serial output with {st['os_fixtures']} expected outputs; both languages and the game menu",
+         "\\texttt{run\\_tests: PASS}", runs("os")),
+        ("Serial game test", "plays a full battle over the serial port alone, then checks the shell answers",
+         "\\texttt{serial\\_game\\_test: PASS}", runs("serial")),
+        ("Toolchain tests", f"{st['toolchain_fixtures']} C programs compiled by CC, AS and LD, run on the "
+         "host; exit code compared with the expected value", "\\texttt{run\\_toolchain\\_tests: PASS}",
+         runs("toolchain")),
+        ("Bootstrap fixed point", "Stage~2 and Stage~3 of AS, CC and LD are byte-identical",
+         "\\texttt{bootstrap: PASS}", runs("bootstrap")),
+        ("Reference tools", "while \\texttt{nasm}, \\texttt{gcc}, \\texttt{ld} and \\texttt{objcopy} are "
+         "still in the build: a change must pass the tests with the old tools first; LD's flat output must "
+         "equal \\texttt{objcopy}'s byte for byte", "same as the tests above", "\\multicolumn{3}{c}{---}"),
+        ("Boot budget", "the kernel image fits the sectors the boot loader reads", "build error",
+         "\\multicolumn{3}{c}{in every build}"),
+        ("Screenshots", "the graphical battle screen, from QEMU frame-buffer dumps",
+         "the agent looks at the image", f"\\multicolumn{{3}}{{c}}{{{st['image_reads']} images read}}"),
+    ]
+    (GEN / "tab-oracles.tex").write_text(head + "\\begin{table}[h]\n\\begin{tabular}{p{2.6cm}p{6cm}p{3cm}rrr}\n"
+        "Oracle & What it checks & Verdict & Runs & Failed & No verdict \\\\\n\\hline\n"
+        + "\n".join(" & ".join(r) + " \\\\" for r in orows) + "\n\\end{tabular}\n"
+        "\\caption{The oracles of \\sysname{}. \\emph{Runs} counts the times the agent executed the "
+        "oracle during the session; \\emph{No verdict} means the output carried neither verdict, "
+        "typically a hang killed by a timeout or a build error before the test started.}\n"
+        "\\label{tab:oracles}\n\\end{table}\n")
+
+    t7_start, t7_end = st["commit_time"]["0f82a8d"], st["commit_time"]["1d62d14"]
     total_active = sum((s.active() for s in segs.values()), timedelta())
     os_active = sum((segs[s].active() for s in list(PHASES)[:8]), timedelta())
     tc_active = sum((segs[s].active() for s in list(PHASES)[8:16]), timedelta())
@@ -429,6 +543,15 @@ def write(st: dict) -> None:
         "vgadriver": st["loc"]["kernel/vga.c"],
         "fontlines": st["loc"]["kernel/font.c"],
         "inputlines": st["loc"]["kernel/input.c"],
+        "noraclesruns": sum(sum(c.values()) for c in o.values()),
+        "noraclesfailed": sum(c["fail"] for c in o.values()),
+        "nostestruns": sum(o["os"].values()),
+        "nostestfailed": o["os"]["fail"],
+        "ntoolchaintestruns": sum(o["toolchain"].values()),
+        "ntoolchainfixtures": st["toolchain_fixtures"],
+        "nselftestchecks": st["selftest_checks"],
+        "nimagereads": st["image_reads"],
+        "ntsevenfailed": sum(1 for _, t, v in st["oracle_log"] if v == "fail" and t7_start < t <= t7_end),
         "playruns": st["play"][0],
         "playseconds": st["play"][1],
     }
