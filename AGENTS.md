@@ -8,7 +8,7 @@ A commit where the published artifact differs from what the source builds to is 
 
 ## Paper
 
-Topic: Claude writes an operating system, named **Fixpoint** in the paper (`\sysname` in
+Topic: Claude writes an operating system, named **QuineOS** in the paper (`\sysname` in
 `main.tex`). Data sources, pinned in `tools/stats.py`:
 - https://github.com/monperrus/boot-to-claude: the OS and its git history (public).
 - https://github.com/monperrus/boot-to-claude-paper: the Claude Code transcripts (private).
