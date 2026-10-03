@@ -8,9 +8,18 @@ A commit where the published artifact differs from what the source builds to is 
 
 ## Paper
 
-Topic: Claude writes an operating system. Data source: https://github.com/monperrus/boot-to-claude
-(numbers in the paper are pinned to a commit stated in its introduction). Every number in
-the paper must be recomputable from that repository; no invented facts.
+Topic: Claude writes an operating system, named **Fixpoint** in the paper (`\sysname` in
+`main.tex`). Data sources, pinned in `tools/stats.py`:
+- https://github.com/monperrus/boot-to-claude: the OS and its git history (public).
+- https://github.com/monperrus/boot-to-claude-paper: the Claude Code transcripts (private).
+
+Every number in the paper comes from `paper/gen/*.tex`, written by
+`.venv/bin/python tools/stats.py` (clones both repos into `data/`, needs `gh` logged in).
+Never type a number into `main.tex` by hand; add a macro to `stats.py` instead.
+`paper/gen/` is committed so the build does not need the data. The only manual
+annotation is `data/defects.json` (defects per commit message).
+`stats.py` asserts its own instrument: the transcript's `git commit` calls must match
+every agent commit, and nothing else.
 
 ## Layout
 

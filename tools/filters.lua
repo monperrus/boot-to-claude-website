@@ -29,7 +29,17 @@ local function resolve_refs(link)
   return link
 end
 
+-- \paragraph and below are run-in headings in LaTeX: never numbered.
+local function unnumber_paragraphs(h)
+  if h.level >= 4 then
+    h.classes:insert("unnumbered")
+    h.classes:insert("paragraph")
+    return h
+  end
+end
+
 return {
+  { Header = unnumber_paragraphs },
   { Inline = number_equations },
   { Link = resolve_refs },
 }

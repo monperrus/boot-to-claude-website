@@ -3,23 +3,27 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 
-\title{Boot Claude: A Language Model Writes an Operating System and the Toolchain That Builds It}
+\input{gen/stats}
+\newcommand{\sysname}{Fixpoint}
+
+\title{Fixpoint: A Language Model Writes an Operating System and the Toolchain That Builds It}
 \author{Martin Monperrus \and Claude}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-We report on \texttt{boot-to-claude}, an x86 operating system written by Claude, a
-large language model working as a coding agent. The system boots in QEMU through its own
-two-stage boot loader into a 32-bit kernel with a disk driver, a file system, an
-interactive shell, a scripting language, and a compiler to an in-kernel bytecode VM.
-In a second stage, the agent replaced \texttt{nasm}, \texttt{gcc}, \texttt{ld} and
-\texttt{objcopy} with its own assembler, C compiler and linker, and bootstrapped them
-until the second and third self-compiled generations were byte-identical. The OS was
-built in one evening; the toolchain spanned four calendar days. Commit messages document 43 defects
-found and fixed along the way, almost all of them caught by booting the system rather
-than by reading code.
+We report on \sysname{}, an x86 operating system in which every line of code, from the
+boot sector to the compiler that builds it, was written by Claude working as a coding
+agent. \sysname{} boots in QEMU through its own two-stage boot loader into a 32-bit
+kernel with a disk driver, a file system, a shell, a scripting language, and a compiler
+to an in-kernel bytecode VM. Its build uses no third-party compiler, assembler or linker:
+the agent wrote its own, and bootstrapped them until the second and third self-compiled
+generations were byte-identical. The human author typed \nprompts{} prompts, \nshortprompts{}
+of them three words or fewer, and wrote no code. From plan approval to a working OS with
+both languages took \plantoosmin{} minutes. The toolchain took \tcactivehours{} hours of
+agent activity and produced most of the \ndefects{} defects that the agent found and
+fixed, most of them by running the system rather than by reading code.
 \end{abstract}
 
 \section{Introduction}\label{sec:intro}
@@ -30,15 +34,43 @@ that already works. Writing a system from an empty repository is a different tas
 agent has to choose an architecture, keep it coherent over thousands of lines, and debug
 failures whose only symptom may be a machine that prints nothing.
 
-An operating system is a demanding case of this task. Unix showed that a small team
-can build one that is both small and useful~\cite{ritchie1974unix}, and teaching kernels
-such as xv6~\cite{cox2006xv6} show how much fits in a few thousand lines. Below the
-kernel there is no runtime to report a mistake. A wrong descriptor table entry resets the
+An operating system is a demanding case of this task. Unix showed that a small team can
+build one that is both small and useful~\cite{ritchie1974unix}, and teaching kernels such
+as xv6~\cite{cox2006xv6} show how much fits in a few thousand lines. Below the kernel
+there is no runtime to report a mistake. A wrong descriptor table entry resets the
 machine, and an I/O instruction with the wrong operand size corrupts the disk silently.
 
-This paper reports what Claude built, in what order, and which defects it hit. The
-source is public.\footnote{\url{https://github.com/monperrus/boot-to-claude}} All numbers
-below are computed from its git history at commit \texttt{a4a64cb}.
+This paper reports what Claude built, how much the human contributed, and which defects
+the agent hit. Our data are the git history of the
+system\footnote{\url{https://github.com/monperrus/boot-to-claude}, commit \ospin{}.} and
+the complete transcript of the Claude Code session that produced it. Every number in
+this paper is computed from these two sources by a script.
+
+\section{Goal}\label{sec:goal}
+
+\paragraph{What we build.} A complete, if small, computing system: something that boots
+on a bare (emulated) PC, stores files, and lets a user write and run programs in
+languages of its own. Concretely, a boot loader, a kernel, a file system, an interactive
+shell, an interpreted scripting language, and a compiled language with its virtual
+machine. Then the tools that build all of it: an assembler, a C compiler and a linker.
+
+\paragraph{What we want to demonstrate.} The opening prompt stated the criterion:
+\emph{``the goal is that 100\% of lines of code come from Claude.''} We make it precise
+as three claims.
+\begin{description}
+  \item[Total authorship.] No line of the system or of its build path is written by a
+        human or taken from an existing project. This rules out a third-party compiler
+        too: a C compiler is code, and a system built by \texttt{gcc} is partly
+        \texttt{gcc}'s. The only exceptions are the emulator, which plays the role of
+        the hardware, and one use of the host compiler to start the bootstrap.
+  \item[Self-reference.] The toolchain is good enough to build itself, and the proof is
+        a fixed point: compiling the compiler with itself yields the same bytes twice in
+        a row. This is the property the system is named after.
+  \item[Human as client, not programmer.] The human states goals and answers questions.
+        The human does not write, edit, or review code line by line.
+\end{description}
+Section~\ref{sec:human} measures the third claim, and Section~\ref{sec:defects} examines
+how the agent kept the system correct without a human reviewer.
 
 \section{The System}\label{sec:system}
 
@@ -50,8 +82,9 @@ COM1 serial output, a polled ATA PIO disk driver, and a polled PS/2 keyboard dri
 
 \paragraph{Deliberately single-tasking.} The kernel never enables interrupts after boot.
 It has no scheduler, no paging and no user mode. The shell and both language runtimes run
-in kernel context. This was a design decision stated in the repository: it keeps the OS
-layer small and moves the interesting work into the file system and the languages.
+in kernel context. The agent proposed this before writing any code, as the recommended
+answer to its own question on how minimal the OS should be, so that the effort would go
+into the file system and the languages. The human accepted.
 
 \paragraph{Above the kernel.} \emph{tinyfs} is a flat file system with a superblock, a
 free-block bitmap, a fixed inode table and 4\,KB maximum file size. Its format code is
@@ -60,84 +93,39 @@ image, so there is a single implementation of the on-disk format. The shell offe
 \texttt{ls}, \texttt{cat}, \texttt{write}, \texttt{rm}, \texttt{run}, \texttt{build} and
 \texttt{exec}. \texttt{run} executes a dynamically typed script with a tree-walking
 interpreter. \texttt{build} compiles a statically scoped, integer-only C-like language to
-stack bytecode, and \texttt{exec} runs it in a VM that supports recursion.
+stack bytecode, and \texttt{exec} runs it in a VM that supports recursion. A turn-based
+battle game, added last, can be played from the keyboard or entirely over the serial
+port, so that another agent can play it.
 
 \paragraph{Toolchain.} \texttt{toolchain/} holds an assembler for the NASM subset the OS
 uses, a compiler for a C dialect called tinyC, and a two-mode ELF32 linker. The host
 \texttt{gcc} is invoked exactly once, to compile the first generation of this toolchain.
 Table~\ref{tab:size} gives the size of each part.
 
-\begin{table}[h]
-\centering
-\begin{tabular}{lr}
-Component & Lines \\
-\hline
-Boot loader (\texttt{boot/}) & 218 \\
-Kernel (\texttt{kernel/}) & 5003 \\
-\quad of which languages (\texttt{kernel/lang/}) & 2041 \\
-\quad of which game (\texttt{kernel/game/}) & 748 \\
-\quad of which tinyfs (\texttt{kernel/fs/}) & 333 \\
-\quad of which shell (\texttt{kernel/shell/}) & 286 \\
-Toolchain (\texttt{toolchain/}) & 6430 \\
-\quad of which C compiler & 3109 \\
-\quad of which assembler & 2050 \\
-\quad of which linker & 816 \\
-Build and test tools (\texttt{tools/}) & 682 \\
-Test fixtures (\texttt{tests/}) & 424 \\
-Design documents (\texttt{docs/}) & 1099 \\
-\end{tabular}
-\caption{Size of \texttt{boot-to-claude} at commit \texttt{a4a64cb}, in physical lines
-including comments.}
-\label{tab:size}
-\end{table}
+\input{gen/tab-size}
 
 \section{How It Was Built}\label{sec:history}
 
-The history has 23 commits over six days, in three episodes (Table~\ref{tab:timeline}).
-Each phase ends in a commit whose message states what was verified and how.
+The work happened in one Claude Code session using \sessionmodel{}, with
+\nassistant{} model responses and \ntoolcalls{} tool calls, of which \nbash{} shell
+commands and \nedit{} file writes or edits. The context window filled up and was
+summarized \ncompactions{} times. Table~\ref{tab:timeline} splits the session at each
+phase commit. Of the \ncommits{} commits in the repository, all but two were made by the
+agent in this session: the initial empty commit, and a ten-line Makefile target for
+running QEMU with a display.
 
-\begin{table}[h]
-\centering
-\begin{tabular}{llrr}
-Commit time (2026, CEST) & Phase & Files & Lines added \\
-\hline
-Jul 17, 19:04 & 0: boot sector, build pipeline & 3 & 71 \\
-Jul 17, 19:07 & 1: two-stage loader, protected mode & 10 & 350 \\
-Jul 17, 19:10 & 2: GDT/IDT, allocator, self-test & 14 & 486 \\
-Jul 17, 19:16 & 3: ATA driver, tinyfs & 13 & 620 \\
-Jul 17, 19:20 & 4: keyboard driver, shell & 9 & 411 \\
-Jul 17, 19:30 & 5: scripting language & 16 & 1126 \\
-Jul 17, 19:38 & 6: compiler, bytecode VM & 13 & 1248 \\
-Jul 17, 22:12 & 7: README, docs, final check & 2 & 181 \\
-\hline
-Jul 17, 23:40 & T1: assembler & 9 & 1823 \\
-Jul 18, 08:36 & T2/T4: C compiler & 21 & 2999 \\
-Jul 18, 08:49 & T3: adapt kernel to tinyC & 18 & 357 \\
-Jul 18, 16:54 & T5: linker & 15 & 1101 \\
-Jul 18, 17:11 & T6: drop \texttt{objcopy} & 4 & 66 \\
-Jul 18, 22:59 & T7: switch the build over & 20 & 1022 \\
-Jul 21, 07:17 & T8: self-hosting bootstrap & 30 & 1131 \\
-Jul 21, 07:28 & T9: docs, cleanup & 1 & 23 \\
-\hline
-Jul 22, 07:20 & serial-playable battle game & 15 & 664 \\
-Jul 22, 16:56 & VGA mode 13h driver, bitmap font & 5 & 428 \\
-Jul 22, 17:21 & graphical battle screen & 10 & 520 \\
-\end{tabular}
-\caption{Phase commits of \texttt{boot-to-claude}. Four small commits (initial commit, a
-GUI run target, a NASM macro expansion, a \texttt{.gitignore} entry) are omitted.}
-\label{tab:timeline}
-\end{table}
+\input{gen/tab-timeline}
 
-\paragraph{The OS in one evening.} Phases 0 to 6, from an empty boot sector to a
-compiler with a bytecode VM, were committed within 34 minutes. Commit times are an upper
-bound on the visible pace: they say when work was committed, not when it started.
+\paragraph{The OS in one sitting.} The agent asked four design questions, wrote a plan,
+and the human approved it. Phases 0 to 6, from an empty boot sector to a compiler with a
+bytecode VM, followed within \plantoosmin{} minutes, without a single further prompt.
 
-\paragraph{The toolchain over four calendar days.} Replacing the host tools took longer than
-writing the OS. The assembler had to grow from the instructions in four hand-written
-\texttt{.S} files to everything the C compiler emits. The kernel source was first
-rewritten into the tinyC dialect while still building with \texttt{gcc} (phase T3), so
-that each change could be checked as behavior-preserving before the new toolchain was in
-the loop.
+\paragraph{The toolchain over four days.} Replacing the host tools took
+\tcactivehours{} hours of agent activity, about nine times the OS. The assembler had to
+grow from the instructions in four hand-written \texttt{.S} files to everything the C
+compiler emits. The kernel source was first rewritten into the tinyC dialect while still
+building with \texttt{gcc} (phase T3), so that each change could be checked as
+behavior-preserving before the new toolchain was in the loop.
 
 \paragraph{The fixed point.} Phase T8 compiles the toolchain three times: Stage~1 with
 \texttt{gcc}, Stage~2 with Stage~1, and Stage~3 with Stage~2. Let $S_i$ be the binaries of
@@ -150,9 +138,33 @@ it was compiled to. Getting there required features the toolchain had never need
 the kernel: variadic functions, multi-dimensional arrays, and a minimal C library
 written for the purpose.
 
+\section{What the Human Did}\label{sec:human}
+
+Table~\ref{tab:prompts} lists every prompt. Three kinds stand out.
+
+\paragraph{Goals.} Five prompts set the direction: the opening request, the request for
+a self-hosted toolchain, a request to install the compiler inside the OS, a game an agent
+could play over serial, and a graphical screen for that game. A few more were errands
+around the result, such as recording and hosting a screencast.
+
+\paragraph{Go-aheads.} \nshortprompts{} of the \nprompts{} prompts have three words or
+fewer: ``go'', ``proceed'', ``Do T3.''. They start the next phase of a plan the agent
+wrote. The human also approved the agent's \napprovals{} plans.
+
+\paragraph{Decisions.} The human answered \nquestions{} multiple-choice questions from
+the agent. In \nrecommended{} of them the human picked the option the agent had marked
+as recommended; the remaining answer was free text naming where to host a video. The
+human's own technical input was two prompts. One reported that typing in
+\texttt{make run} showed nothing. The other questioned whether \texttt{objcopy} was needed
+at all, which removed a planned phase (T6). One goal was dropped: when asked to run the
+compiler inside the OS, the agent explained that the OS has no way to load native code,
+and the human moved on to the game instead.
+
+\input{gen/tab-prompts}
+
 \section{Defects and How They Were Found}\label{sec:defects}
 
-Commit messages list each defect fixed in their phase. Counting them gives 43:
+Commit messages list each defect fixed in their phase. Counting them gives \ndefects{}:
 one in phase 3, two in phase 5, three in T1, three in T2/T4, six in T5, sixteen in T7,
 eleven in T8, and one in the game. Some are missing features rather than wrong code,
 such as \texttt{switch} statements not yet supported by the compiler. Three patterns
@@ -160,9 +172,9 @@ stand out.
 
 \paragraph{Most defects were silent.} Few caused a crash. An \texttt{in}/\texttt{out}
 instruction encoded without its operand-size prefix read two 16-bit words per access
-instead of one, which surfaced as file system superblock corruption. A missing
-\texttt{\textbackslash b} escape made the compiler lex \texttt{'\textbackslash b'} as
-the letter \texttt{b}, so every typed \texttt{b} in a shell command acted as a
+instead of one, which surfaced as file system superblock corruption. The compiler's
+lexer had no case for the \texttt{\textbackslash b} escape and read the backspace
+character literal as the letter \texttt{b}, so every typed \texttt{b} in a shell command acted as a
 backspace. In the scripting interpreter, integer addition fell through to a default
 branch returning 0, so \texttt{i = i + 1} looped forever.
 
@@ -183,29 +195,32 @@ expected files.
 
 Kernel and compiler code is abundant in training data, so the agent may have reproduced
 known designs rather than invented them. The defect count relies on commit messages
-written by the agent, so it counts what the agent chose to report. This paper does not
-yet measure how much a human steered the work, nor the cost in tokens or time spent per
-phase. Finally, the system runs on QEMU only; real hardware is less forgiving.
+written by the agent, so it counts what the agent chose to report. Active time is
+estimated from transcript timestamps, counting gaps shorter than ten minutes; a long
+build without output would be counted as idle. This is one session with one model, so
+it shows that the result is possible, not how often it happens. Finally, the system runs
+on QEMU only; real hardware is less forgiving.
 
 \section{Related Work}\label{sec:related}
 
 HumanEval~\cite{chen2021codex} measures function-level synthesis, and
 SWE-bench~\cite{jimenez2024swebench} measures issue resolution in existing repositories.
-\texttt{boot-to-claude} is a single construction of a whole system from scratch.
-xv6~\cite{cox2006xv6} is the natural size reference for a teaching kernel. Unlike
-\texttt{boot-to-claude}, it is multi-processor and has processes and paging. seL4~\cite{klein2009sel4}
-shows that a kernel can be built against a machine-checked specification. Its checks are
-proofs. The checks here are tests that boot the machine. Thompson's Turing lecture on
-trusting compilers~\cite{thompson1984trusting} is the classic warning that a self-hosted
-toolchain is only as trustworthy as its first generation. Here that generation is built
-by \texttt{gcc} from source the agent wrote.
+\sysname{} is a single construction of a whole system from scratch. xv6~\cite{cox2006xv6}
+is the natural size reference for a teaching kernel; unlike \sysname{}, it is
+multi-processor and has processes and paging. seL4~\cite{klein2009sel4} shows that a
+kernel can be built against a machine-checked specification. Its checks are proofs; the
+checks here are tests that boot the machine. Thompson's Turing lecture on trusting
+compilers~\cite{thompson1984trusting} is the classic warning that a self-hosted toolchain
+is only as trustworthy as its first generation. Here that generation is built by
+\texttt{gcc} from source the agent wrote.
 
 \section{Conclusion}\label{sec:conclusion}
 
 A language model wrote a small, single-tasking operating system, then wrote the
 assembler, compiler and linker that build it, up to a byte-identical self-hosting fixed
-point. The OS was the easy part. Most of the effort and most of the defects went into the
-toolchain, and most defects were found by booting the machine.
+point. The human set goals and said ``go''. The OS was the easy part. Most of the effort
+and most of the defects went into the toolchain, and most defects were found by booting
+the machine.
 
 \bibliographystyle{plain}
 \bibliography{refs}

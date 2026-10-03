@@ -2,3 +2,5 @@
 build/
 __pycache__/
 plan-*.md
+data/boot-to-claude/
+data/boot-to-claude-paper/

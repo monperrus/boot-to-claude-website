@@ -1,0 +1,11 @@
+{
+  "_comment": "Manual annotation: number of defects (or missing features) each commit message lists as found and fixed. Keyed by short hash of monperrus/boot-to-claude.",
+  "a3b80d1": 1,
+  "f4702ba": 2,
+  "cd6231d": 3,
+  "72955af": 3,
+  "1647d6f": 6,
+  "1d62d14": 16,
+  "acff0a5": 11,
+  "4246ba7": 1
+}
