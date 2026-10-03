@@ -28,17 +28,21 @@ reading code.
 
 \section{Introduction}\label{sec:intro}
 
-Benchmarks for code-generating models have grown from single functions~\cite{chen2021codex}
-to repository-level issue fixing~\cite{jimenez2024swebench}. Both measure changes to code
-that already works. Writing a system from an empty repository is a different task. The
-agent has to choose an architecture, keep it coherent over thousands of lines, and debug
-failures whose only symptom may be a machine that prints nothing.
+Power on the machine. A 512-byte boot sector loads a kernel, the kernel mounts its file
+system, and a shell prompt appears. Compile a program, run it. Type \texttt{play}, and a
+battle screen in the style of a Game Boy Advance lights up. No human wrote a single line
+of it: not the boot sector, not the kernel, not the game, and not the assembler, C
+compiler and linker that built all of them, which also built themselves. An AI did.
 
-An operating system is a demanding case of this task. Unix showed that a small team can
-build one that is both small and useful~\cite{ritchie1974unix}, and teaching kernels such
-as xv6~\cite{cox2006xv6} show how much fits in a few thousand lines. Below the kernel
-there is no runtime to report a mistake. A wrong descriptor table entry resets the
-machine, and an I/O instruction with the wrong operand size corrupts the disk silently.
+Coding agents are usually judged on changes to code that already works, from single
+functions~\cite{chen2021codex} to repository-level issue fixing~\cite{jimenez2024swebench}.
+Writing a system from an empty repository is a different task. The agent has to choose
+an architecture, keep it coherent over thousands of lines, and debug failures whose only
+symptom may be a machine that prints nothing. An operating system is the extreme case.
+Below the kernel there is no runtime to report a mistake: a wrong descriptor table entry
+resets the machine, and an I/O instruction with the wrong operand size corrupts the disk
+without a word. Unix~\cite{ritchie1974unix} and xv6~\cite{cox2006xv6} show how much a
+small kernel can do; they also took skilled people to write.
 
 There are precedents for agents building large systems from nothing. A team of 16 Claude
 agents wrote a C compiler that builds Linux, but it relies on GCC's assembler and
