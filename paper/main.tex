@@ -19,11 +19,11 @@ agent. \sysname{} boots in QEMU through its own two-stage boot loader into a 32-
 kernel with a disk driver, a file system, a shell, a scripting language, and a compiler
 to an in-kernel bytecode VM. Its build uses no third-party compiler, assembler or linker:
 the agent wrote its own, and bootstrapped them until the second and third self-compiled
-generations were byte-identical. The human author typed \nprompts{} prompts, \nshortprompts{}
-of them three words or fewer, and wrote no code. From plan approval to a working OS with
-both languages took \plantoosmin{} minutes. The toolchain took \tcactivehours{} hours of
-agent activity and produced most of the \ndefects{} defects that the agent found and
-fixed, most of them by running the system rather than by reading code.
+generations were byte-identical. The human set the goals and wrote no code. From plan
+approval to a working OS with both languages took \plantoosmin{} minutes. The toolchain
+took \tcactivehours{} hours of agent activity and accounts for most of the \ndefects{}
+defects that the agent found and fixed, mostly by running the system rather than by
+reading code.
 \end{abstract}
 
 \section{Introduction}\label{sec:intro}
@@ -66,8 +66,7 @@ including how often the agent ran each oracle and how often the oracle said no.
 file system, a shell, a scripting language and a compiler to bytecode. Its assembler, C
 compiler and linker were written by the agent and compile themselves to byte-identical
 binaries. From plan approval, the OS with both languages took \plantoosmin{} minutes;
-the toolchain took \tcactivehours{} hours of agent activity. The human typed
-\nprompts{} prompts, \nshortprompts{} of them three words or fewer. The agent ran its
+the toolchain took \tcactivehours{} hours of agent activity. The agent ran its
 scripted oracles \noraclesruns{} times and saw \noraclesfailed{} failures, most of them
 while switching the build to its own toolchain, and fixed \ndefects{} defects that its
 commit messages report.
