@@ -1,0 +1,9 @@
+{
+  "_comment": "Manual corrections to the annotator output in data/defects/, applied by tools/defects.py. Each entry overrides fields of one record; a reason is mandatory.",
+  "D-C02-02": {"evidence": "return val_const((int64_t)(ps->ctx->org_valid_offset));",
+               "_reason": "annotator quoted a reconstructed -/+ diff; replaced by the verbatim old line"},
+  "D-C03-06": {"confirmed_by": null,
+               "_reason": "cited tool id does not exist in the transcript"},
+  "D-C05-17": {"duplicate_of": "D-C06-04",
+               "_reason": "symptom (superblock corruption) recorded at the chunk boundary; cause and fix are D-C06-04"}
+}

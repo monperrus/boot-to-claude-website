@@ -4,3 +4,5 @@ __pycache__/
 plan-*.md
 data/boot-to-claude/
 data/boot-to-claude-paper/
+data/episodes/
+data/chunks/
