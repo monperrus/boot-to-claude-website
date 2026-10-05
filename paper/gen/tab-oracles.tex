@@ -13,6 +13,6 @@ Reference tools & while \texttt{nasm}, \texttt{gcc}, \texttt{ld} and \texttt{obj
 Boot budget & the kernel image fits the sectors the boot loader reads & build error & \multicolumn{3}{c}{in every build} \\
 Screenshots & the graphical battle screen, from QEMU frame-buffer dumps & the agent looks at the image & \multicolumn{3}{c}{25 images read} \\
 \end{tabular}
-\caption{The oracles of \sysname{}. \emph{Runs} counts the times the agent executed the oracle during the session; \emph{No verdict} means the output carried neither verdict, typically a hang killed by a timeout or a build error before the test started.}
+\caption{The oracles of \sysname{}. \emph{Runs} counts the times the agent executed the oracle during the session, each run linked to the list of runs on the verification site; \emph{No verdict} means the output carried neither verdict, typically a hang killed by a timeout, a crash of the tool under test, or a build error before the test started.}
 \label{tab:oracles}
 \end{table}

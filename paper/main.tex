@@ -338,7 +338,12 @@ judges it, and the agent iterates until the oracle agrees. Nothing in this loop 
 human, but everything depends on the oracle: a weak one lets defects through, a missing
 one leaves the agent guessing. \sysname{} had strong oracles, listed in
 Table~\ref{tab:oracles}, and the agent consulted them constantly: it ran the four
-scripted ones \noraclesruns{} times, and \noraclesfailed{} of those runs failed.
+scripted ones \noraclesruns{} times, and \noraclesfailed{} of those runs failed. Oracles
+serve twice in the loop: they reveal a defect, and they confirm its fix.
+\href{\siteurl/oracles.html}{Every run} is listed on the verification site with the
+defects it revealed and the fixes it confirmed, and every defect links back to the oracle
+that found it: \ntfirstinrun{} of the \ntdefects{} defects were first seen in a scripted
+oracle run, and \ntconfirmedinrun{} fixes were confirmed by one.
 
 \input{gen/tab-oracles}
 
@@ -351,8 +356,8 @@ anything to test, and kept it for six days.
 
 \paragraph{Binary verdicts.} Each scripted oracle ends with one line, \texttt{PASS} or
 \texttt{FAIL}. There is nothing to interpret. When a
-run produces neither, because the machine hung until the timeout or the build broke
-first, the absence of \texttt{PASS} is itself the failure.
+run produces neither, because the machine hung until the timeout, the tool under test
+crashed, or the build broke first, the absence of \texttt{PASS} is itself the failure.
 
 \paragraph{End to end.} The OS system test boots the real boot loader and kernel built by
 the toolchain under test, and drives them as a user would. Any defect anywhere on that
@@ -394,7 +399,10 @@ verbatim. A script then checked every cited tool call against the transcript and
 quote against the chunk; two records needed a correction and one duplicate across a
 chunk boundary was merged, each kept in a committed file with its reason. We checked a
 random 10\% sample against the transcript output it cites, and checked that every defect
-named in a commit message has a record.
+named in a commit message has a record. \href{\siteurl/defects.html}{All records} are on
+the verification site, each with its type (product, oracle tooling, environment), its
+component, the evidence quote, and links to the tool calls that showed, fixed and
+confirmed it.
 
 \paragraph{Results.} The transcript holds \ntdefects{} defects: \ntproduct{} in
 \sysname{} itself, \ntoracle{} in the oracle tooling, and \ntenv{} in the environment
@@ -468,7 +476,9 @@ The defect analysis relies on annotator agents reading the transcript. They may 
 missed defects or misjudged a cause; we mitigated this with mandatory verbatim
 evidence, an automatic check of every quote and tool call, a coverage check against
 the commit messages, and a manual check of a random sample. Oracle verdicts are read from the transcript by matching each
-script's \texttt{PASS} and \texttt{FAIL} lines. Active time is
+script's \texttt{PASS} and \texttt{FAIL} lines. A run counts only when a shell command
+executes the oracle's script; a single test case run by hand does not, so the run counts
+are a lower bound. Active time is
 estimated from transcript timestamps, counting gaps shorter than ten minutes; a long
 build without output would be counted as idle. This is one session with one model, so
 it shows that the result is possible, not how often it happens. Finally, the system runs

@@ -593,8 +593,9 @@ def write(st: dict) -> None:
         "Oracle & What it checks & Verdict & Runs & Failed & No verdict \\\\\n\\hline\n"
         + "\n".join(" & ".join(r) + " \\\\" for r in orows) + "\n\\end{tabular}\n"
         "\\caption{The oracles of \\sysname{}. \\emph{Runs} counts the times the agent executed the "
-        "oracle during the session; \\emph{No verdict} means the output carried neither verdict, "
-        "typically a hang killed by a timeout or a build error before the test started.}\n"
+        "oracle during the session, each run linked to the list of runs on the verification site; "
+        "\\emph{No verdict} means the output carried neither verdict, typically a hang killed by a "
+        "timeout, a crash of the tool under test, or a build error before the test started.}\n"
         "\\label{tab:oracles}\n\\end{table}\n")
 
     t7_start, t7_end = st["commit_time"]["0f82a8d"], st["commit_time"]["1d62d14"]
@@ -641,6 +642,10 @@ def write(st: dict) -> None:
         "nimagereads": st["image_reads"],
         **defect_macros(st["tdefects"]),
         "ntsevenfailed": sum(1 for _, t, v, _ in st["oracle_log"] if v == "fail" and t7_start < t <= t7_end),
+        # Defects whose first sighting, or whose fix confirmation, is a scripted oracle run.
+        "ntfirstinrun": sum(1 for d in st["tdefects"] if d.get("first_seen") in {x[3] for x in st["oracle_log"]}),
+        "ntconfirmedinrun": sum(1 for d in st["tdefects"]
+                                if d.get("confirmed_by") in {x[3] for x in st["oracle_log"]}),
         "playruns": st["play"][0],
         "playseconds": st["play"][1],
     }
