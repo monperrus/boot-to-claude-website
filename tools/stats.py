@@ -152,7 +152,8 @@ def executes(cmd: str, script: str) -> bool:
     if "git commit" in cmd or "cat >" in cmd or "<<" in cmd:
         return False
     for seg in re.split(r"&&|\|\||;|\n|\|", cmd):
-        if re.match(r"^(timeout\s+\S+\s+)?(bash\s+|python3\s+)?(\S+=\S+\s+)*(\./)?(\S*/)?" + script + r"(\s|$)",
+        if re.match(r"^(timeout\s+\S+\s+)?(env\s+)?(\S+=\S+\s+)*(bash\s+|python3\s+)?(\./)?(\S*/)?" + script
+                    + r"(\s|$)",
                     seg.strip()):
             return True
     return False

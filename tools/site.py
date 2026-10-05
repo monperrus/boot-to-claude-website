@@ -234,25 +234,35 @@ def oracles_page(ds: list[dict], log: list, where: dict[str, str]) -> str:
     for d in ds:
         first[d.get("first_seen")].append(d)
         confirmed[d.get("confirmed_by")].append(d)
-    out = ["<p>Oracles find defects and confirm their fixes. For each scripted oracle: the defects it "
-           "revealed, then every execution in the session (verdict classified by <code>tools/stats.py</code> "
-           "from the output), with the defects first seen in or confirmed by that run. Then the other ways "
-           "defects were revealed, with their defects.</p>"]
+    out = ["<p>Oracles find defects and confirm their fixes. One row per execution of a scripted oracle "
+           "(verdict classified by <code>tools/stats.py</code> from the output), with the defects first "
+           "seen in that run and the fixes it confirmed; then one row per other way a defect was revealed "
+           "(build, code reading, ...), which has no runs to count.</p>",
+           "<table><tr><th>type</th><th>time</th><th>verdict</th><th>tool call</th><th>defects revealed</th>"
+           "<th>fixes confirmed</th></tr>"]
     for name, *_ in ORACLES:
         runs = [x for x in log if x[0] == name]
+        for k, (_, t, v, tid) in enumerate(runs):
+            mark = "" if k else f'<span id="{name}"></span>'
+            out.append(f'<tr><td>{mark}{name}</td><td>{when(t)}</td><td>{v}</td>'
+                       f'<td><a href="t/{where[tid]}.html#{tid}">{tid}</a></td>'
+                       f"<td>{dlinks(first.get(tid, []))}</td><td>{dlinks(confirmed.get(tid, []))}</td></tr>")
+        # Credited to this oracle, but first seen in a call that is not a run of its script
+        # (e.g. one fixture run by hand).
+        ids = {tid for *_, tid in runs}
         rb = next((k for k, v in SCRIPTED.items() if v == name), "")
-        out.append(f'<h2 id="{name}">{name} ({len(runs)} runs)</h2>'
-                   f"<p>Defects revealed: {dlinks(by_rb.get(rb, []))}</p><table>"
-                   "<tr><th>time</th><th>verdict</th><th>tool call</th><th>first seen here</th>"
-                   "<th>fix confirmed here</th></tr>")
-        out += [f'<tr><td>{when(t)}</td><td>{v}</td><td><a href="t/{where[tid]}.html#{tid}">{tid}</a></td>'
-                f"<td>{dlinks(first.get(tid, []))}</td><td>{dlinks(confirmed.get(tid, []))}</td></tr>"
-                for _, t, v, tid in runs]
-        out.append("</table>")
-    out.append("<h2>Other ways defects were revealed</h2>")
+        off = [d for d in by_rb.get(rb, []) if d.get("first_seen") not in ids]
+        if off:
+            out.append(f"<tr><td>{name}</td><td>—</td><td>—</td><td>outside a scripted run</td>"
+                       f"<td>{dlinks(off)}</td><td>—</td></tr>")
     for rb in sorted(k for k in by_rb if k not in SCRIPTED):
-        out.append(f'<h3 id="rb-{rb}">{esc(rb)} ({len(by_rb[rb])})</h3><p>{dlinks(by_rb[rb])}</p>')
-    return "\n".join(out)
+        out.append(f'<tr><td><span id="rb-{rb}"></span>{esc(rb)}</td><td>—</td><td>—</td><td>—</td>'
+                   f"<td>{dlinks(by_rb[rb])}</td><td>—</td></tr>")
+    out.append("</table>")
+    body = "\n".join(out)
+    missing = {d["id"] for d in ds} - set(re.findall(r"defects\.html#(D-[\w-]+)", body))
+    assert not missing, f"defects with no row on the oracles page: {sorted(missing)}"
+    return body
 
 
 def index_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> str:
@@ -293,7 +303,7 @@ def build() -> None:
     ds, log = load_defects(), oracle_runs(rows)[1]
     runs = {tid: name for name, _, _, tid in log}
     (OUT / "defects.html").write_text(page(f"Defects ({len(ds)})", defects_page(ds, runs, where)))
-    (OUT / "oracles.html").write_text(page("Oracles", oracles_page(ds, log, where)))
+    (OUT / "oracles.html").write_text(page(f"Oracles ({len(log)} runs)", oracles_page(ds, log, where)))
     (OUT / "index.html").write_text(page("QuineOS: the evidence", index_page(bounds, titles, bodies)))
 
 
