@@ -16,10 +16,20 @@ Topic: Claude writes an operating system, named **QuineOS** in the paper (`\sysn
 Every number in the paper comes from `paper/gen/*.tex`, written by
 `.venv/bin/python tools/stats.py` (clones both repos into `data/`, needs `gh` logged in).
 Never type a number into `main.tex` by hand; add a macro to `stats.py` instead.
-`paper/gen/` is committed so the build does not need the data. The only manual
-annotation is `data/defects.json` (defects per commit message).
+`paper/gen/` is committed so the build does not need the data. The manual
+annotations are `data/defects/C*.json` (defects per transcript chunk, by subagents),
+merged and validated by `tools/defects.py` into `data/trajectory-defects.json`, with hand
+fixes in `data/defects-corrections.json`. `data/defects.json` (defects per commit
+message) is the older count, no longer used by the paper.
 `stats.py` asserts its own instrument: the transcript's `git commit` calls must match
 every agent commit, and nothing else.
+
+Verification site: `tools/site.py` renders the transcript, the defects and the oracle
+runs into `build/site/`, published by `.github/workflows/pages.yml` at the URL in
+`SITE` (`stats.py`), from the repo `monperrus/boot-to-claude-website`. Every tool call
+is anchored by its tool id. The paper links into it via `\siteurl` (generated tables)
+and `\defect{D-..}{text}` (prose). `tools/site.py --check` must stay silent: it fails
+on any link from the paper or within the site to a missing page or anchor.
 
 ## Layout
 
@@ -34,6 +44,7 @@ every agent commit, and nothing else.
 
 1. Edit `paper/*.tex|bib`.
 2. `.venv/bin/python tools/build.py` writes `build/paper.html` and prints its sha256.
+   If the change adds links into the site: `tools/site.py && tools/site.py --check`.
 3. Publish `build/paper.html` with the Artifact tool, passing `url` from `artifact.json`.
    Never create a second artifact.
 4. `.venv/bin/python tools/build.py --mark-published` records the new hash in `artifact.json`.

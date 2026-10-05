@@ -5,6 +5,8 @@
 
 \input{gen/stats}
 \newcommand{\sysname}{QuineOS}
+% \defect{D-C04-12}{text}: link text to the defect's record on the verification site.
+\newcommand{\defect}[2]{\href{\siteurl/defects.html\##1}{#2}}
 
 \title{QuineOS: A Language Model Writes an Operating System and the Toolchain That Builds It}
 \author{Martin Monperrus \and Claude}
@@ -105,7 +107,9 @@ built both.
         source and history, the complete transcript of the session that built it, with
         every prompt, model response, tool call and tool output, and the scripts that
         recompute every number, table and figure in this paper from them. Anyone can
-        check every claim we make, down to the individual tool call.
+        check every claim we make, down to the individual tool call: the phases,
+        prompts, oracle runs and defects in this paper are hyperlinks into the rendered
+        transcript.\footnote{\url{\siteurl}}
   \item \textbf{A game written by an AI, for an AI}, on a stack written by an AI from the
         boot sector up.
 \end{itemize}
@@ -252,9 +256,9 @@ keyboard and a program on the serial line can drive the same session interchange
 The game speaks a plain text protocol: it prints the screen as text, and reads a digit,
 \texttt{run} or \texttt{quit}. Asked to play for five minutes, the agent connected a
 script to QEMU's serial socket and played \playruns{} runs in \playseconds{} seconds,
-restarting after each faint. Playing found a real bug: the random move picker took a
-modulo of a 32-bit value with the sign bit set, which \sysname{}'s compiler only supports
-as signed division, and read a garbage move name with absurd damage.
+restarting after each faint. Playing found a \defect{D-C09-01}{real bug}: the random move
+picker took a modulo of a 32-bit value with the sign bit set, which \sysname{}'s compiler
+only supports as signed division, and read a garbage move name with absurd damage.
 
 \paragraph{A graphical battle screen.} Asked next for \emph{``a good looking GUI like
 Pokemon Ruby on GBA''}, the agent wrote a driver for VGA mode 13h (320$\times$200, 256
@@ -265,13 +269,14 @@ triangles in \gamesprites{} lines. The battle scene, with sky, ground, platforms
 and a dialogue box, takes \gamegui{} lines on top of the \gamerules{} lines of game
 logic. The graphics are purely additive: the text sent over serial is byte for byte the
 same, so the machine player sees no difference. Returning to the shell restores text
-mode, which took a debugging session of its own because mode 13h overwrites the video
-memory plane where the text font lives.
+mode, which took a debugging session of its own because \defect{D-C09-05}{mode 13h
+overwrites the video memory plane} where the text font lives.
 
 \paragraph{Screencasts.} The agent recorded both versions as videos: the five-minute
 serial session, and the graphical battle screen from which Figure~\ref{fig:battle} is
 taken. For the second, it drove the game with emulated keystrokes and captured QEMU's
-frame buffer, after fixing two bugs in its own capture script along the way.
+frame buffer, after fixing \defect{D-C10-06}{two} \defect{D-C10-07}{bugs} in its own
+capture script along the way.
 
 \section{How It Was Built}\label{sec:history}
 
@@ -399,7 +404,7 @@ commits and left no trace in the history. The toolchain accounts for \nttoolchai
 the \ntproduct{}, the C compiler alone for \ntcc{}: building a compiler strong enough
 was the harder half of the task. \ntmultiattempt{} defects took more than one failing
 check to fix, up to \ntmaxattempts{}. Some are missing features rather than wrong code,
-such as \texttt{switch} statements not yet supported by the compiler.
+such as \defect{D-C05-02}{\texttt{switch} statements} not yet supported by the compiler.
 
 \input{gen/tab-defects}
 
@@ -410,21 +415,22 @@ output, a hang, corrupted data or a wrong picture, with no error message. \ntcod
 were found by the agent reading its own code, typically while investigating a nearby
 failure. Three patterns show why the end-to-end oracles mattered.
 
-\paragraph{Many defects were silent.} Few caused a crash. An \texttt{in}/\texttt{out}
-instruction encoded without its operand-size prefix read two 16-bit words per access
-instead of one, which surfaced as file system superblock corruption. The compiler's
-lexer had no case for the \texttt{\textbackslash b} escape and read the backspace
-character literal as the letter \texttt{b}, so every typed \texttt{b} in a shell command acted as a
-backspace. In the scripting interpreter, integer addition fell through to a default
+\paragraph{Many defects were silent.} Few caused a crash. An
+\defect{D-C06-04}{\texttt{in}/\texttt{out} instruction} encoded without its operand-size
+prefix read two 16-bit words per access instead of one, which surfaced as file system
+superblock corruption. The compiler's lexer had \defect{D-C06-13}{no case for the
+\texttt{\textbackslash b} escape} and read the backspace character literal as the letter
+\texttt{b}, so every typed \texttt{b} in a shell command acted as a backspace. In the
+scripting interpreter, \defect{D-C01-08}{integer addition} fell through to a default
 branch returning 0, so \texttt{i = i + 1} looped forever.
 
-\paragraph{Defects hid behind other defects.} A three-operand \texttt{imul} that dropped
-its immediate went unnoticed because code that wrote and read arrays used the same wrong
+\paragraph{Defects hid behind other defects.} A \defect{D-C04-12}{three-operand
+\texttt{imul}} that dropped its immediate went unnoticed because code that wrote and read arrays used the same wrong
 index formula, so the errors cancelled. It surfaced only when linker-produced code read
 an array written by the kernel.
 
 \paragraph{The system test caught what unit tests missed.} The assembler's
-\texttt{.dq} directive computed its high 32 bits with a shift by 32, which x86 masks to a
+\defect{D-C08-08}{\texttt{.dq} directive} computed its high 32 bits with a shift by 32, which x86 masks to a
 shift by 0. No toolchain test used \texttt{.dq}. The boot loader's disk address packet
 does, and only the OS system test caught it.
 
@@ -435,23 +441,24 @@ in them. They differ in nature from product defects: a product defect makes the 
 say no, while an oracle defect makes it say the wrong thing, or nothing. Three kinds
 appear.
 
-\paragraph{Oracles that could not fail.} The toolchain test runner had no expected exit
-code for one fixture, so that test was silently skipped. The pointer test kept passing
-with the broken three-operand \texttt{imul}, because it wrote and read arrays with the
-same wrong index formula. Worse, ad-hoc verification commands printed success lines such
-as \texttt{IDENTICAL} after a step had already failed, and misled the diagnosis. A
+\paragraph{Oracles that could not fail.} The toolchain test runner
+\defect{D-C03-18}{had no expected exit code} for one fixture, so that test was silently
+skipped. The \defect{D-C04-13}{pointer test kept passing} with the broken three-operand
+\texttt{imul}, because it wrote and read arrays with the same wrong index formula. Worse,
+\defect{D-C04-17}{ad-hoc verification commands} printed success lines such as
+\texttt{IDENTICAL} after a step had already failed, and misled the diagnosis. A
 false \texttt{PASS} is the most dangerous output an oracle can produce, because the agent
 trusts it.
 
-\paragraph{Oracles that could not observe.} A QEMU serial socket in
+\paragraph{Oracles that could not observe.} A \defect{D-C09-03}{QEMU serial socket} in
 \texttt{server,nowait} mode discards everything the guest prints before a client
 connects, so a script waiting for the boot banner timed out on a healthy machine. A
-screencast recorder assumed 320$\times$200 frames where QEMU produces 640$\times$400, and
+\defect{D-C10-06}{screencast recorder} assumed 320$\times$200 frames where QEMU produces 640$\times$400, and
 the agent first blamed a torn file read. Each time, the agent had to debug its
 instrument before it could trust it again.
 
-\paragraph{Oracles that killed themselves.} Several commands killed leftover QEMU
-processes with \texttt{pkill -f} and a pattern that also matched the command line of
+\paragraph{Oracles that killed themselves.} \defect{D-C10-05}{Several commands} killed
+leftover QEMU processes with \texttt{pkill -f} and a pattern that also matched the command line of
 the shell running it, so the shell died and the test never ran. The symptom, a
 silent exit code, looks exactly like a failing system.
 

@@ -5,10 +5,10 @@ Oracle & What it checks & Verdict & Runs & Failed & No verdict \\
 \hline
 CPU exception handlers & any CPU fault, e.g.\ an invalid opcode from a mis-encoded instruction & \texttt{EXCEPTION vector=$n$}, then halt & \multicolumn{3}{c}{in every boot} \\
 Boot self-test & 19 checks: string functions, allocator with coalescing, tinyfs create/write/read/delete & \texttt{SELFTEST PASS} or \texttt{FAIL} & \multicolumn{3}{c}{in every boot} \\
-OS system test & boots headless QEMU, types shell commands through the QEMU monitor, compares serial output with 2 expected outputs; both languages and the game menu & \texttt{run\_tests: PASS} & 51 & 15 & 4 \\
-Serial game test & plays a full battle over the serial port alone, then checks the shell answers & \texttt{serial\_game\_test: PASS} & 8 & 0 & 1 \\
-Toolchain tests & 16 C programs compiled by CC, AS and LD, run on the host; exit code compared with the expected value & \texttt{run\_toolchain\_tests: PASS} & 56 & 6 & 2 \\
-Bootstrap fixed point & Stage~2 and Stage~3 of AS, CC and LD are byte-identical & \texttt{bootstrap: PASS} & 2 & 0 & 0 \\
+OS system test & boots headless QEMU, types shell commands through the QEMU monitor, compares serial output with 2 expected outputs; both languages and the game menu & \texttt{run\_tests: PASS} & \href{\siteurl/oracles.html\#os}{51} & 15 & 4 \\
+Serial game test & plays a full battle over the serial port alone, then checks the shell answers & \texttt{serial\_game\_test: PASS} & \href{\siteurl/oracles.html\#serial}{8} & 0 & 1 \\
+Toolchain tests & 16 C programs compiled by CC, AS and LD, run on the host; exit code compared with the expected value & \texttt{run\_toolchain\_tests: PASS} & \href{\siteurl/oracles.html\#toolchain}{56} & 6 & 2 \\
+Bootstrap fixed point & Stage~2 and Stage~3 of AS, CC and LD are byte-identical & \texttt{bootstrap: PASS} & \href{\siteurl/oracles.html\#bootstrap}{2} & 0 & 0 \\
 Reference tools & while \texttt{nasm}, \texttt{gcc}, \texttt{ld} and \texttt{objcopy} are still in the build: a change must pass the tests with the old tools first; LD's flat output must equal \texttt{objcopy}'s byte for byte & same as the tests above & \multicolumn{3}{c}{---} \\
 Boot budget & the kernel image fits the sectors the boot loader reads & build error & \multicolumn{3}{c}{in every build} \\
 Screenshots & the graphical battle screen, from QEMU frame-buffer dumps & the agent looks at the image & \multicolumn{3}{c}{25 images read} \\
