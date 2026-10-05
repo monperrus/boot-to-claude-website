@@ -57,7 +57,7 @@ def page(title: str, body: str, depth: int = 0) -> str:
             f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>'
             f'<link rel="stylesheet" href="{up}site.css"></head><body>'
             f'<nav><a href="{up}index.html">QuineOS evidence</a> · <a href="{up}defects.html">defects</a> · '
-            f'<a href="{up}oracles.html">oracle runs</a> · <a href="{up}paper.html">paper</a></nav>'
+            f'<a href="{up}oracles.html">oracles</a></nav>'
             f"<h1>{esc(title)}</h1>\n{body}\n</body></html>\n")
 
 
@@ -155,52 +155,103 @@ def render_transcript(rows: list[dict], bounds: list,
 
 # ---- defects and oracles ----------------------------------------------------------
 
-def defects_page(where: dict[str, str]) -> str:
+KIND_LABEL = {"product": "Product", "oracle": "Oracle tooling", "environment": "Environment"}
+# `revealed_by` values that are a scripted oracle (tools/stats.py ORACLES), by oracle name.
+SCRIPTED = {"os-test": "os", "toolchain-test": "toolchain", "serial-test": "serial", "bootstrap-cmp": "bootstrap"}
+
+
+def revealed_anchor(v: str) -> str:
+    return SCRIPTED.get(v, f"rb-{v}")
+
+
+def load_defects() -> list[dict]:
+    """Unique defects, ordered by type, then by the component rows of Table tab-defects."""
     from stats import DEFECT_ROWS
-    ds = json.loads((DATA / "trajectory-defects.json").read_text())
-    groups = [(f"row-{n}", label, lambda d, c=comps: d["kind"] == "product" and d["component"] in c)
-              for n, (label, comps) in enumerate(DEFECT_ROWS)]
-    groups += [("oracle", "Oracle tooling", lambda d: d["kind"] == "oracle"),
-               ("environment", "Environment", lambda d: d["kind"] == "environment")]
+    ds = [d for d in json.loads((DATA / "trajectory-defects.json").read_text()) if not d.get("duplicate_of")]
 
+    def key(d: dict) -> tuple[int, int]:
+        row = next((n for n, (_, comps) in enumerate(DEFECT_ROWS) if d["component"] in comps), 0)
+        return list(KIND_LABEL).index(d["kind"]), row if d["kind"] == "product" else 0
+    return sorted(ds, key=key)
+
+
+def group_anchor(d: dict) -> str:
+    """The anchor the paper's Table tab-defects links to for this defect's row."""
+    from stats import DEFECT_ROWS
+    if d["kind"] != "product":
+        return d["kind"]
+    return f"row-{next(n for n, (_, comps) in enumerate(DEFECT_ROWS) if d['component'] in comps)}"
+
+
+def defects_page(ds: list[dict], runs: dict[str, str], where: dict[str, str]) -> str:
+    """`runs` maps the tool id of every scripted oracle run to the oracle's name."""
     def link(tid: str | None) -> str:
-        return f'<a href="t/{where[tid]}.html#{tid}">{tid[-8:]}</a>' if tid else "—"
+        if not tid:
+            return "—"
+        oracle = f' (<a href="oracles.html#{runs[tid]}">{runs[tid]}</a> run)' if tid in runs else ""
+        return f'<a href="t/{where[tid]}.html#{tid}">{tid[-8:]}</a>{oracle}'
 
-    out = [f"<p>{sum(1 for d in ds if not d.get('duplicate_of'))} defects annotated from the transcript by "
-           "subagents, validated by <code>tools/defects.py</code> (every tool id exists, every evidence "
-           "quote is verbatim in its chunk). Links go to the tool call that first showed the defect, "
-           "the edits that fixed it and the run that confirmed the fix.</p>"]
-    for gid, label, sel in groups:
-        rows = [d for d in ds if sel(d) and not d.get("duplicate_of")]
-        out.append(f'<h2 id="{gid}">{esc(label)} ({len(rows)})</h2><table><tr><th>id</th><th>defect</th>'
-                   "<th>symptom / revealed by</th><th>first seen · fixed by · confirmed by</th></tr>")
-        for d in rows:
-            fixes = ", ".join(link(t) for t in d.get("fixed_by") or []) or "—"
-            cm = " · in commit message" if d.get("in_commit_message") else ""
-            out.append(f'<tr id="{d["id"]}"><td>{d["id"]}<div class="meta">{esc(d["component"])}</div></td>'
-                       f'<td>{esc(d["summary"])}<pre>{esc(d.get("evidence") or "")}</pre></td>'
-                       f'<td>{esc(d["symptom"])}<div class="meta">{esc(d["revealed_by"])}{cm}; '
-                       f'{d.get("failed_attempts") or 0} failed attempts</div></td>'
-                       f'<td>{link(d.get("first_seen"))} · {fixes} · {link(d.get("confirmed_by"))}</td></tr>')
-        out.append("</table>")
-    dups = [d for d in ds if d.get("duplicate_of")]
+    out = [f"<p>{len(ds)} defects annotated from the transcript by subagents, validated by "
+           "<code>tools/defects.py</code> (every tool id exists, every evidence quote is verbatim in its "
+           "chunk). <em>Revealed by</em> links to the <a href=\"oracles.html\">oracle</a> that found the "
+           "defect. The last column links to the tool call that first showed the defect, the edits that "
+           "fixed it and the run that confirmed the fix.</p>",
+           "<table><tr><th>id</th><th>type</th><th>component</th><th>defect</th><th>symptom / revealed by</th>"
+           "<th>first seen · fixed by · confirmed by</th></tr>"]
+    seen: set[str] = set()
+    for d in ds:
+        g = group_anchor(d)
+        mark = "" if g in seen else f'<span id="{g}"></span>'
+        seen.add(g)
+        fixes = ", ".join(link(t) for t in d.get("fixed_by") or []) or "—"
+        cm = "; in commit message" if d.get("in_commit_message") else ""
+        rb = d["revealed_by"]
+        out.append(f'<tr id="{d["id"]}"><td>{mark}{d["id"]}</td><td>{KIND_LABEL[d["kind"]]}</td>'
+                   f'<td>{esc(d["component"])}</td>'
+                   f'<td>{esc(d["summary"])}<pre>{esc(d.get("evidence") or "")}</pre></td>'
+                   f'<td>{esc(d["symptom"])}<div class="meta"><a href="oracles.html#{revealed_anchor(rb)}">'
+                   f'{esc(rb)}</a>{cm}; {d.get("failed_attempts") or 0} failed attempts</div></td>'
+                   f'<td>{link(d.get("first_seen"))} · {fixes} · {link(d.get("confirmed_by"))}</td></tr>')
+    out.append("</table>")
+    dups = [d for d in json.loads((DATA / "trajectory-defects.json").read_text()) if d.get("duplicate_of")]
     out.append("<h2 id=\"duplicates\">Merged duplicates</h2><ul>" + "".join(
         f'<li id="{d["id"]}">{d["id"]} = <a href="#{d["duplicate_of"]}">{d["duplicate_of"]}</a></li>'
         for d in dups) + "</ul>")
     return "\n".join(out)
 
 
-def oracles_page(log: list, where: dict[str, str]) -> str:
+def oracles_page(ds: list[dict], log: list, where: dict[str, str]) -> str:
     from stats import ORACLES
-    out = ["<p>Every execution of a scripted oracle in the session, classified by "
-           "<code>tools/stats.py</code> from the verdict line of its output.</p>"]
+
+    def dlinks(sel: list[dict]) -> str:
+        return ", ".join(f'<a href="defects.html#{d["id"]}">{d["id"]}</a>' for d in sel) or "—"
+
+    by_rb: dict[str, list[dict]] = defaultdict(list)
+    for d in ds:
+        by_rb[d["revealed_by"]].append(d)
+    first = defaultdict(list)
+    confirmed = defaultdict(list)
+    for d in ds:
+        first[d.get("first_seen")].append(d)
+        confirmed[d.get("confirmed_by")].append(d)
+    out = ["<p>Oracles find defects and confirm their fixes. For each scripted oracle: the defects it "
+           "revealed, then every execution in the session (verdict classified by <code>tools/stats.py</code> "
+           "from the output), with the defects first seen in or confirmed by that run. Then the other ways "
+           "defects were revealed, with their defects.</p>"]
     for name, *_ in ORACLES:
         runs = [x for x in log if x[0] == name]
-        out.append(f'<h2 id="{name}">{name} ({len(runs)} runs)</h2><table>'
-                   "<tr><th>time</th><th>verdict</th><th>tool call</th></tr>")
-        out += [f'<tr><td>{when(t)}</td><td>{v}</td><td><a href="t/{where[tid]}.html#{tid}">{tid}</a></td></tr>'
+        rb = next((k for k, v in SCRIPTED.items() if v == name), "")
+        out.append(f'<h2 id="{name}">{name} ({len(runs)} runs)</h2>'
+                   f"<p>Defects revealed: {dlinks(by_rb.get(rb, []))}</p><table>"
+                   "<tr><th>time</th><th>verdict</th><th>tool call</th><th>first seen here</th>"
+                   "<th>fix confirmed here</th></tr>")
+        out += [f'<tr><td>{when(t)}</td><td>{v}</td><td><a href="t/{where[tid]}.html#{tid}">{tid}</a></td>'
+                f"<td>{dlinks(first.get(tid, []))}</td><td>{dlinks(confirmed.get(tid, []))}</td></tr>"
                 for _, t, v, tid in runs]
         out.append("</table>")
+    out.append("<h2>Other ways defects were revealed</h2>")
+    for rb in sorted(k for k in by_rb if k not in SCRIPTED):
+        out.append(f'<h3 id="rb-{rb}">{esc(rb)} ({len(by_rb[rb])})</h3><p>{dlinks(by_rb[rb])}</p>')
     return "\n".join(out)
 
 
@@ -239,11 +290,11 @@ def build() -> None:
         (OUT / name).write_bytes(data)
     for name, data in persisted.items():
         (OUT / "out" / name).write_bytes(data)
-    (OUT / "defects.html").write_text(page("Defects", defects_page(where)))
-    (OUT / "oracles.html").write_text(page("Oracle runs", oracles_page(oracle_runs(rows)[1], where)))
+    ds, log = load_defects(), oracle_runs(rows)[1]
+    runs = {tid: name for name, _, _, tid in log}
+    (OUT / "defects.html").write_text(page(f"Defects ({len(ds)})", defects_page(ds, runs, where)))
+    (OUT / "oracles.html").write_text(page("Oracles", oracles_page(ds, log, where)))
     (OUT / "index.html").write_text(page("QuineOS: the evidence", index_page(bounds, titles, bodies)))
-    if PAPER.exists():
-        shutil.copy(PAPER, OUT / "paper.html")
 
 
 # ---- link checker ---------------------------------------------------------------

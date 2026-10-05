@@ -1,5 +1,5 @@
 # Build the verification site (tools/site.py) from the pinned repositories and publish it
-# on GitHub Pages. The paper (build/paper.html) is copied into the site as paper.html.
+# on GitHub Pages.
 name: pages
 
 on:
@@ -24,9 +24,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install pypandoc_binary
       - run: |
-          python tools/build.py
           python tools/site.py
           python tools/site.py --check --selftest
         env:
