@@ -1,3 +1,4 @@
+% paper boot-to-claude
 \documentclass[11pt]{article}
 \usepackage{amsmath}
 \usepackage{graphicx}
@@ -8,8 +9,8 @@
 % \defect{D-C04-12}{text}: link text to the defect's record on the verification site.
 \newcommand{\defect}[2]{\href{\siteurl/defects.html\##1}{#2}}
 
-\title{QuineOS: A Language Model Writes an Operating System and the Toolchain That Builds It}
-\author{Martin Monperrus \and Claude}
+\title{Booting a Bootstrapped Operating System Entirely Written by AI}
+\author{Martin Monperrus}
 
 \begin{document}
 \maketitle
@@ -116,50 +117,49 @@ built both.
 
 \section{Goal}\label{sec:goal}
 
-\paragraph{Claims.} We study total AI authorship of a computing system: every line of
-code, in the system and in everything that builds it, produced by an AI coding agent.
-The agent in this study is Claude, but the model is incidental; the question is whether
-total authorship is achievable by an AI agent at all. We decompose it into two claims.
+\paragraph{Total AI authorship.} We aim at total AI authorship of a computing system: every line of
+code, in the system and in everything that builds it, is produced by an AI coding agent.
+We use a coding agent to generate this computing system.
+We decompose this goal into two claims.
 \begin{description}
-  \item[Full AI-written stack.] No line of the system or of its build path is written by
-        a human or taken from an existing project. This rules out a third-party compiler
-        too: a C compiler is code, and a system built by \texttt{gcc} is partly
-        \texttt{gcc}'s. The only exceptions are the emulator, which plays the role of
-        the hardware, and one use of the host compiler to start the bootstrap.
-  \item[Full bootstrap.] The AI-written toolchain builds the OS and builds itself, and
-        the proof is a fixed point: compiling the compiler with itself yields the same
-        bytes twice in a row. A quine is a program that prints its own source code.
-        \sysname{} is named after the toolchain's equivalent: it rebuilds itself and gets
-        the same bytes.
+  \item[Full AI-written kernel.] No line in the kernel is written by
+        a human or taken from an existing project.
+  \item[Full AI-written stack.] No line in the build system (compiler, linker) is written by
+        a human or taken from an existing project. We do not use a third-party compiler.
+  \item[Full bootstrap.] The system is AI-bootstrapped. An AI-written toolchain (compiler, linker) builds the AI-written OS and builds itself.
 \end{description}
 
-\paragraph{Rationale for the bootstrap.} An OS whose source an AI wrote but which \texttt{gcc}
-compiles is still a joint work: every machine instruction that runs was chosen by a code
-generator written by people. The bootstrap removes that dependency. The host compiler is
-used once, to produce a first binary of the AI's compiler; from then on the AI's compiler
-compiles itself, and the fixed point shows that the result no longer depends on the host
-compiler's code generation. The bootstrap is also a strong test in its own right: a
-compiler that compiles its own source correctly has to handle a real, large C program
-that the AI did not write for the purpose of testing it.
+The agent in this study is Claude, but this is incidental; the question is whether
+total authorship is achievable by an AI agent at all. 
 
-\paragraph{Two compounding difficulties.} The two claims stack two hard problems. The first is
-the operating system: code that runs on bare hardware, with no runtime underneath, where
-a mistake resets the machine or corrupts data without a word. The second is a compiler
-strong enough to compile both that operating system and itself. Building a C compiler is
-hard even with abundant resources: Anthropic's team of 16 agents spent about \$20{,}000
-on a C compiler that builds Linux, and still relies on GCC's assembler and
-linker~\cite{carlini2026ccc}. \sysname{} needs a much smaller dialect of C, but also an
-assembler and a linker, and no external tool to fall back on. The two difficulties
-compound. When the OS misbehaves, the cause may be in the OS or in the compiler that
-built it, and the symptom looks the same. An \texttt{in} instruction encoded without its
+\paragraph{Rationale for the bootstrap.} An OS whose source was written by AI but which \texttt{gcc}
+compiles is still a joint work: every machine instruction that runs was chosen by a code
+generator written by humans. The bootstrap removes that dependency. The host compiler is
+used once, to produce a first binary of the AI's compiler; from then on the AI's compiler
+compiles itself, and the fixed point shows that the result no longer depends on the human-written
+compiler. The bootstrap is also a strong oracle in its own right: a
+compiler that compiles its own source correctly has to handle a real, large C program.
+
+\paragraph{Two compounding difficulties.} We have two hard problems. The first is
+writing an operating system: code that runs on bare hardware, with no runtime underneath, where
+a mistake resets the machine or corrupts data without a word. The second is writing a compiler
+strong enough to compile both that operating system and itself. 
+Building a C compiler is
+hard even with the abundant resources of Anthropic: their team of 16 agents spent about \$20{,}000
+on a C compiler that builds Linux, yet, they still relies on GCC's assembler and
+linker~\cite{carlini2026ccc}. 
+
+The two difficulties
+compound. When the OS misbehaves after bootstrap, the cause may be in the OS or in the compiler that
+built it, and the symptom cannot tell them apart. An \texttt{in} instruction encoded without its
 operand-size prefix, for example, showed up as a corrupted file system
-(Section~\ref{sec:defectlist}).
+(see Section~\ref{sec:defectlist}).
 
 \paragraph{Scope.} The target is a complete, if small, computing system: one that boots
-on a bare (emulated) PC, stores files, and lets a user write and run programs in
+on a bare machine and that lets a user write and run programs in
 languages of its own. Concretely, a boot loader, a kernel, a file system, an interactive
-shell, an interpreted scripting language, and a compiled language with its virtual
-machine. Then the tools that build all of it: an assembler, a C compiler and a linker.
+shell, an interpreted scripting language, and a compiled language. Then the tools that build all of it: an assembler, a C compiler and a linker.
+\todo{add a summary table of what we want}
 
 \section{\sysname}\label{sec:system}
 
@@ -171,9 +171,7 @@ COM1 serial output, a polled ATA PIO disk driver, and a polled PS/2 keyboard dri
 
 \paragraph{Deliberately single-tasking.} The kernel never enables interrupts after boot.
 It has no scheduler, no paging and no user mode. The shell and both language runtimes run
-in kernel context. The agent proposed this before writing any code, as the recommended
-answer to its own question on how minimal the OS should be, so that the effort would go
-into the file system and the languages. The human accepted.
+in kernel context.
 
 \paragraph{Above the kernel.} \emph{tinyfs} is a flat file system with a superblock, a
 free-block bitmap, a fixed inode table and 4\,KB maximum file size. Its format code is
@@ -225,12 +223,16 @@ machine \sysname{} runs on, not part of what builds it.
 
 \section{Tiny Monsters: A Game Made for an AI Player}\label{sec:game}
 
-The last thing the human asked for was not infrastructure but fun: \emph{``implement in
-tinyos a Pokemon like game such that an AI agent later plays over serial port.''} The
-result, \emph{Tiny Monsters}, is the most visible demonstration of the full AI-written
+% design and implementation
+Now that we have a working operating system,  we implement and play with a Pokemon like game.
+The result, \emph{Tiny Monsters}, is the most visible demonstration of the full AI-written
 stack. Every pixel in Figure~\ref{fig:battle} is drawn by code Claude wrote, compiled by
-the compiler Claude wrote, on a kernel Claude wrote, and the game was first played by
+the compiler Claude wrote, on a kernel Claude wrote.
+
+% who plays Claude
+\todo{Who plays the game? Claude itself, write this key paragraph and the game was first played by
 Claude.
+}
 
 \begin{figure}[h]
 \centering
@@ -309,21 +311,27 @@ minimal C library.
 
 \section{What the Human Did}\label{sec:human}
 
+\todo{Table~\ref{tab:prompts} are not the prompts, I want to see the exact promprt in the table (not the phase, not metrics)}
+
+
+\todo{current Table~\ref{tab:prompts} will becorem Table~\ref{tab:phases} to talk about the speed of implementation, move to appendix}
 Table~\ref{tab:prompts} lists the prompts up to the game. Three kinds stand out.
 
-\paragraph{Goals.} Five prompts set the direction: the opening request, the request for
+\paragraph{Prompts.} 
+\todo{copy them verbatim here} Five prompts set the direction: the opening request, the request for
 a self-hosted toolchain, a request to install the compiler inside the OS, a game an agent
 could play over serial, and a graphical screen for that game. A few more were errands
 around the result, such as recording and hosting a screencast.
 
-\paragraph{Go-aheads.} \nshortprompts{} of the \nprompts{} prompts have three words or
+\paragraph{Go-aheads prompts.}
+\todo{first give some background on the fact that llms lack autonomy and need this nudges. then say how many of them we did}
+\nshortprompts{} of the \nprompts{} prompts have three words or
 fewer: ``go'', ``proceed'', ``Do T3.''. They start the next phase of a plan the agent
 wrote. The human also approved the agent's \napprovals{} plans.
 
 \paragraph{Decisions.} The human answered \nquestions{} multiple-choice questions from
-the agent. In \nrecommended{} of them the human picked the option the agent had marked
-as recommended; the remaining answer was free text naming where to host a video. The
-human's own technical input was two prompts. One reported that typing in
+the agent \todo{add link to table}. In \nrecommended{} of them the human picked the option the agent had marked
+as recommended; only one answer was free text. The human's own technical input was two prompts. One reported that typing in
 \texttt{make run} showed nothing. The other questioned whether \texttt{objcopy} was needed
 at all, which removed a planned phase (T6). One goal was dropped: when asked to run the
 compiler inside the OS, the agent explained that the OS has no way to load native code,
@@ -331,15 +339,17 @@ and the human moved on to the game instead.
 
 \input{gen/tab-prompts}
 
-\section{Oracles: How the Agent Knew It Was Right}\label{sec:defects}
+\section{Correctness and Oracles}\label{sec:defects}
 
-A coding agent is as strong as its oracle. The agent proposes a change, the oracle
-judges it, and the agent iterates until the oracle agrees. Nothing in this loop needs a
-human, but everything depends on the oracle: a weak one lets defects through, a missing
-one leaves the agent guessing. \sysname{} had strong oracles, listed in
-Table~\ref{tab:oracles}, and the agent consulted them constantly: it ran the four
-scripted ones \noraclesruns{} times, and \noraclesfailed{} of those runs failed. Oracles
+A coding agent is as strong as the oracles it uses. The agent proposes a change, the oracle
+judges it, and the agent iterates until the oracle agrees. The outcome uality depends on the oracle: a weak one lets defects through, a missing
+one leaves the agent guessing.
+Oracles
 serve twice in the loop: they reveal a defect, and they confirm its fix.
+
+\sysname{} had strong oracles, listed in
+Table~\ref{tab:oracles}, and the agent consulted them constantly: it ran the four
+scripted ones \noraclesruns{} times, and \noraclesfailed{} of those runs failed. 
 \href{\siteurl/oracles.html}{Every run} is listed on the verification site with the
 defects it revealed and the fixes it confirmed, and every defect links back to the oracle
 that found it: \ntfirstinrun{} of the \ntdefects{} defects were first seen in a scripted
@@ -347,11 +357,11 @@ oracle run, and \ntconfirmedinrun{} fixes were confirmed by one.
 
 \input{gen/tab-oracles}
 
-\paragraph{One observation channel.} Every oracle that runs the OS reads the same thing:
-the serial console. The kernel prints everything it shows on screen to COM1 as well, the
+\paragraph{Single observation channel.} Every oracle that runs the OS can only read
+the serial console. The kernel prints everything to console and COM1.
+\todo{sentence unclear: The
 CPU exception handlers print the faulting vector before halting, and QEMU runs headless
-with its serial port captured to a file. A crash, a hang and a wrong answer all become
-text the agent can read. The agent built this channel in phase 0, before there was
+with its serial port captured to a file}. With this design, a crash, a hang and a wrong answer all are text the agent can read. The agent built this channel in phase 0, before there was
 anything to test, and kept it for six days.
 
 \paragraph{Binary verdicts.} Each scripted oracle ends with one line, \texttt{PASS} or
@@ -359,13 +369,13 @@ anything to test, and kept it for six days.
 run produces neither, because the machine hung until the timeout, the tool under test
 crashed, or the build broke first, the absence of \texttt{PASS} is itself the failure.
 
-\paragraph{End to end.} The OS system test boots the real boot loader and kernel built by
+\paragraph{End to end.} The OS system test boots the boot loader and kernel built by
 the toolchain under test, and drives them as a user would. Any defect anywhere on that
 path, in the assembler's encoding, the compiler's code generator or the linker's
 relocations, shows up as a wrong line on the serial console. This is what made the
-toolchain safe to replace: the OS itself is the largest test program the toolchain has.
+toolchain safe to replace: the OS itself is the largest test program the toolchain can use for correctness testing.
 
-\paragraph{Fast and slow.} The toolchain tests run \ntoolchainfixtures{} small programs on
+\paragraph{Fast and slow oracles.} The toolchain tests run \ntoolchainfixtures{} small programs on
 the host in seconds; the OS test boots a machine. The agent ran them
 \ntoolchaintestruns{} and \nostestruns{} times respectively, iterating on the fast oracle
 and confirming on the slow one.
@@ -378,19 +388,15 @@ the loop. The linker's flat output was compared byte for byte with \texttt{objco
 Once the old tools were gone, Equation~\eqref{eq:fixpoint} took over: the bootstrap
 checks the toolchain against itself and needs no reference at all.
 
-\paragraph{The oracle grows.} When the switch-over to the new toolchain surfaced a
-defect, the agent added a regression test for its class: the switch-over commit adds ten
-toolchain tests, one per bug class. \ntsevenfailed{} of the \noraclesfailed{} failing
-oracle runs happened in that phase, which is where the oracles earned their keep.
+\paragraph{Regression tests.} When the switch-over to the new toolchain surfaced a
+defect, the agent added a regression test for its class. \todo{very unclear: \ntsevenfailed{} of the \noraclesfailed{} failing
+oracle runs happened in that phase, which is where the oracles earned their keep.}
 
-\paragraph{Where the oracles are weaker.} Battle outcomes depend on a random number
-generator, so the game tests accept any end state and only check the flow. The graphical
-screen has no scripted oracle at all: the agent judged it by looking at frame-buffer
-dumps (\nimagereads{} images), the weakest check in the table.
+\section{Defects}\label{sec:defectlist}
 
-\subsection{Defects}\label{sec:defectlist}
+\todo{what's our goal here? why is that interesting for the reader? say the goal first}
 
-\paragraph{Method.} Commit messages report the defects the agent chose to mention. To
+\subsection{Method.} Commit messages report the defects the agent chose to mention. To
 see all of them, we cut the transcript into ten chunks at phase boundaries and had ten
 annotator agents list every defect the agent encountered: what was wrong, the tool call
 whose output first showed it, the edits that fixed it, the check that confirmed the fix,
@@ -404,7 +410,7 @@ the verification site, each with its type (product, oracle tooling, environment)
 component, the evidence quote, and links to the tool calls that showed, fixed and
 confirmed it.
 
-\paragraph{Results.} The transcript holds \ntdefects{} defects: \ntproduct{} in
+\subsection{Results.} The transcript holds \ntdefects{} defects: \ntproduct{} in
 \sysname{} itself, \ntoracle{} in the oracle tooling, and \ntenv{} in the environment
 (Table~\ref{tab:defects}). Only \ntreported{} of the \ntproduct{} product defects are
 reported in a commit message; the other \ntunreported{} were found and fixed between
