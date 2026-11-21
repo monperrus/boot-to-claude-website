@@ -95,7 +95,7 @@ carries over to other agents and other systems:
         the code, run an oracle, iterate until it passes. A defect that its oracle could not
         see stayed in until another oracle did (Section~\ref{sec:oracles}).
   \item \textbf{Most defects are silent.} \ntsilent{} of the \ntproduct{} product defects
-        produced no error message at all. An oracle that waits for an error misses them; it
+        produced no error message at all. An oracle that waits for an error misses them; agentic woklflow
         has to state the expected output and compare (Section~\ref{sec:defectlist}).
   \item \textbf{The whole system is the best test program.} Booting the OS caught
         toolchain defects that no unit test covered, because the unit tests cover only what
@@ -512,18 +512,37 @@ the host in seconds; the OS test boots a machine. The agent ran them
 \ntoolchaintestruns{} and \nostestruns{} times respectively, iterating on the fast oracle
 and confirming on the slow one.
 
-\paragraph{References while they exist, a fixed point afterwards.} During the transition
-the old tools were still available, and the agent used them as a differential oracle.
-The kernel was first rewritten into the tinyC dialect while still building with
-\texttt{gcc}, so the OS test could confirm each rewrite before the new compiler was in
-the loop. The linker's flat output was compared byte for byte with \texttt{objcopy}'s.
-Once the old tools were gone, Equation~\eqref{eq:fixpoint} took over: the bootstrap
-checks the toolchain against itself and needs no reference at all.
-
 \paragraph{Regression tests.} Switching the build over to the new toolchain (phase T7)
 is where the oracles mattered most: \ntsevenfailed{} of the \noraclesfailed{} failing oracle
 runs of the whole session happened in that phase alone. When such a failure exposed a
 defect, the agent added a regression test for its class.
+
+\subsection{Three kinds of oracle}\label{sec:oraclekinds}
+
+The oracles of Table~\ref{tab:oracles} decide correctness in three different ways, which
+differ in what they need to exist beforehand.
+
+\paragraph{Expected-output oracle.} The test states what the system must produce for a
+given input, and compares. The OS system test compares the serial console with the
+expected text of each shell session, the toolchain tests compare the exit code of each
+compiled program with a registered value, and the boot self-test checks each result
+against an expected value. It needs someone, here the agent, to know the right answer in
+advance, and it checks only what that someone thought of.
+
+\paragraph{Differential oracle.} The same input goes through the system and through a
+reference implementation, and the two outputs must agree. During the transition the
+old tools were still available: the kernel was first rewritten into the tinyC dialect
+while still building with \texttt{gcc}, so the OS test could confirm each rewrite before
+the new compiler was in the loop, and the linker's flat output was compared byte for
+byte with \texttt{objcopy}'s. It needs no expected value, but it needs a reference, and
+here the goal was to remove the references from the build.
+
+\paragraph{Fixed-point oracle.} The system is applied to itself, and the result must not
+change: the toolchain compiled by Stage~1 and by Stage~2 must be byte-identical
+(Equation~\eqref{eq:fixpoint}). It needs neither an expected value nor a reference, which
+is why it took over once the old tools were gone. It is also the weakest of the three on
+its own: a compiler that consistently miscompiles a construct its own source never uses
+still reaches a fixed point. Here the OS system test covered that gap.
 
 \section{Guidelines for Oracle Design}\label{sec:guidelines}
 
@@ -532,18 +551,16 @@ oracles of Section~\ref{sec:oracles} suggest the following guidelines
 for designing oracles for coding agents. 
 
 \begin{enumerate}
-  \item \textbf{State the expected output.} An oracle that waits for an error misses
-        silent defects. Compare the observed behavior with an expected value.
-  \item \textbf{Check against something independent.} Code that writes and reads its own
-        data agrees with itself even when wrong. Use a reference implementation while one
-        exists (\texttt{gcc}, \texttt{objcopy}), code the agent did not write (the Linux
-        kernel, the BIOS), or a fixed point (Equation~\eqref{eq:fixpoint}).
-  \item \textbf{Run the real workload end to end.} The unit tests cover what the agent
-        thought of; the product covers what it uses. Keep a test that boots the whole
-        system, and confirm on it.
-  \item \textbf{Make every oracle able to fail, and show that it does.} A test that is
-        skipped, or that passes with a known defect, is no oracle. Count a skip as a
-        failure, and check a new test once against a known-bad input.
+  \item \textbf{Combine the three kinds of oracle} of Section~\ref{sec:oraclekinds}. An
+        oracle that only waits for an error misses silent defects: state the expected
+        output and compare. Code that writes and reads its own data agrees with itself
+        even when wrong: check it against a reference implementation while one exists,
+        against code the agent did not write (the Linux kernel, the BIOS), or, once no
+        reference is left, against itself with a fixed point.
+  \item \textbf{Instruct the agent to write and run system tests, end to end.} They are
+        excellent at finding failures. The unit tests cover what the agent thought of;
+        the whole system exercises what it actually uses. Here the test that boots the
+        OS caught defects that no toolchain test covered (Section~\ref{sec:defectlist}).
   \item \textbf{Derive one verdict from exit codes, never from printed text.} A step that
         prints a success line unconditionally lies after a failure. A missing verdict, a
         hang or a crash of the harness, counts as a failure
@@ -551,10 +568,16 @@ for designing oracles for coding agents.
   \item \textbf{Validate the instrument on a healthy system.} When a check fails, first
         ask whether the instrument can observe at all: capture from the start, check frame
         sizes, run it once on a known-good build.
-  \item \textbf{Keep the harness out of the system's way.} Process cleanup, sockets and
-        timeouts belong to the harness; a harness that can kill itself produces the same
-        symptom as a broken system.
+  \item \textbf{Keep the test harness out of its own way.} By test harness we mean the
+        scripts and commands the agent writes to start, drive and stop the system under
+        test, here QEMU, not the coding agent's harness (Claude Code). The two meet,
+        though: the test harness runs inside the shell of the agent's tool calls. A
+        cleanup that matches processes by a pattern can match that shell and kill the
+        test run with it, which looks exactly like a broken system. Clean up by process
+        id, and keep sockets, timeouts and cleanup in the test harness, never mixed
+        with the step under test.
 \end{enumerate}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
