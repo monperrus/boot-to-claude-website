@@ -88,6 +88,8 @@ minutes. Anthropic has shown Claude playing Pokémon Red~\cite{techcrunch2025pok
 here Claude also wrote the game, the operating system under it, and the compiler that
 built both.
 
+\todo{beyond the concrete build, the goal is to extract general knowledge from this and give a bullet list of we learned from this experiment}
+
 \paragraph{Contributions.}
 \begin{itemize}
   \item \textbf{The first bootstrapped operating system written by an AI}, to the best of
@@ -436,35 +438,35 @@ defect, the agent added a regression test for its class.
 
 \section{Defects}\label{sec:defectlist}
 
-Section~\ref{sec:defects} described the oracles; this section describes what they were up
-against. We want to know which mistakes a coding agent makes when it writes a whole system
-from nothing, where in the system they are, and what it takes to find them. This matters
+Section~\ref{sec:defects} described the oracles; this section describes what defects they identified.
+This matters for agent auditability
 to anyone who reviews such a system: if a defect leaves no trace in the history, a reviewer
 who reads only the commits cannot see what the agent got wrong.
 
 \subsection{Method.} Commit messages report the defects the agent chose to mention. To
 see all of them, we cut the transcript into ten chunks at phase boundaries and had ten
-annotator agents list every defect the agent encountered: what was wrong, the tool call
+annotator agents list every defect the agent encountered from commit analysis: what was wrong, the tool call
 whose output first showed it, the edits that fixed it, the check that confirmed the fix,
-and the commit message that reports it, if any. Each record had to quote its evidence
+and the commit message that reports it, if any.
+
+Each quotes its evidence
 verbatim. A script then checked every cited tool call against the transcript and every
-quote against the chunk; two records needed a correction and one duplicate across a
-chunk boundary was merged, each kept in a committed file with its reason. We checked a
-random 10\% sample against the transcript output it cites, and checked that every defect
-named in a commit message has a record. \href{\siteurl/defects.html}{All records} are on
+quote against the chunk. 
+\href{\siteurl/defects.html}{All records} are on
 the verification site, each with its type (product, oracle tooling, environment), its
-component, the evidence quote, and links to the tool calls that showed, fixed and
+component, the quote, and links to the tool calls that showed, fixed and
 confirmed it.
 
 \subsection{Results.} The transcript holds \ntdefects{} defects: \ntproduct{} in
 \sysname{} itself, \ntoracle{} in the oracle tooling, and \ntenv{} in the environment
-(Table~\ref{tab:defects}). Only \ntreported{} of the \ntproduct{} product defects are
+(Table~\ref{tab:defects}).
+
+\ntreported{} of the \ntproduct{} product defects are
 reported in a commit message; the other \ntunreported{} were found and fixed between
-commits and left no trace in the history. The toolchain accounts for \nttoolchain{} of
+commits and left no trace in the commit history, they are visible only in the trajectory. The toolchain accounts for \nttoolchain{} of
 the \ntproduct{}, the C compiler alone for \ntcc{}: building a compiler strong enough
 was the harder half of the task. \ntmultiattempt{} defects took more than one failing
-check to fix, up to \ntmaxattempts{}. Some are missing features rather than wrong code,
-such as \defect{D-C05-02}{\texttt{switch} statements} not yet supported by the compiler.
+check to fix, up to \ntmaxattempts{}. 
 
 \input{gen/tab-defects}
 
@@ -475,28 +477,43 @@ output, a hang, corrupted data or a wrong picture, with no error message. \ntcod
 were found by the agent reading its own code, typically while investigating a nearby
 failure. Three patterns show why the end-to-end oracles mattered.
 
-\paragraph{Many defects were silent.} Few caused a crash. An
+\paragraph{Many defects were silent.} Silent means that the defective component reported
+nothing: no compiler error, no assembler warning, no CPU exception. The machine kept
+running, and the defect showed up later, elsewhere, as wrong behavior. An
 \defect{D-C06-04}{\texttt{in}/\texttt{out} instruction} encoded without its operand-size
 prefix read two 16-bit words per access instead of one, which surfaced as file system
 superblock corruption. The compiler's lexer had \defect{D-C06-13}{no case for the
 \texttt{\textbackslash b} escape} and read the backspace character literal as the letter
 \texttt{b}, so every typed \texttt{b} in a shell command acted as a backspace. In the
 scripting interpreter, \defect{D-C01-08}{integer addition} fell through to a default
-branch returning 0, so \texttt{i = i + 1} looped forever.
+branch returning 0, so \texttt{i = i + 1} looped forever. All three were caught by the OS
+system test, because it compares what the machine prints with what it should print: the
+self-test reported failing file system checks, the echo of a typed \texttt{build} came back
+as \texttt{uild}, and the test timed out waiting for the line \texttt{x = 14}. The
+exception handlers, which catch crashes, saw none of them. The take-away: an oracle that
+only waits for an error message misses most defects; it must state the expected output and
+compare.
 
 \paragraph{Defects hid behind other defects.} A \defect{D-C04-12}{three-operand
 \texttt{imul}} that dropped its immediate went unnoticed because code that wrote and read arrays used the same wrong
-index formula, so the errors cancelled. It surfaced only when linker-produced code read
-an array written by the kernel.
+index formula, so the errors cancelled. It surfaced only when a host program built by the agent's
+compiler, assembler and linker read \texttt{argv}, an array written by the Linux kernel, and
+failed to open its input file. The take-away: a test in which the same code writes and
+reads the data checks that the code agrees with itself, not that it is right. Such
+defects show only where the data crosses into code the agent did not write, or is checked
+against a value computed independently.
 
 \paragraph{The system test caught what unit tests missed.} The assembler's
 \defect{D-C08-08}{\texttt{.dq} directive} computed its high 32 bits with a shift by 32, which x86 masks to a
 shift by 0. No toolchain test used \texttt{.dq}. The boot loader's disk address packet
-does, and only the OS system test caught it.
+does, and only the OS system test caught it: the machine never got past the boot sector.
+The take-away: unit tests cover what their author thought of, and here the author is the
+agent that wrote the bug. The real product exercises what it actually uses. Fast unit
+tests do not replace the end-to-end test; they make it the last line, not the only one.
 
 \subsection{Defects in the oracle loop}\label{sec:oracledefects}
 
-The oracles are code too, written by the same agent, and \ntoracle{} of the defects were
+The oracles are code too and \ntoracle{} of the defects were
 in them. They differ in nature from product defects: a product defect makes the oracle
 say no, while an oracle defect makes it say the wrong thing, or nothing. Three kinds
 appear.
@@ -508,29 +525,82 @@ skipped. The \defect{D-C04-13}{pointer test kept passing} with the broken three-
 \defect{D-C04-17}{ad-hoc verification commands} printed success lines such as
 \texttt{IDENTICAL} after a step had already failed, and misled the diagnosis. A
 false \texttt{PASS} is the most dangerous output an oracle can produce, because the agent
-trusts it.
+trusts it. None of the three was caught by an oracle. The skipped fixture was visible
+only because the runner printed a \texttt{SKIP} line, and the agent registered the
+missing expected value. The other two were found by the agent reading the output against
+itself: an error line directly followed by a success line. For the ad-hoc commands, the
+agent reran each step on its own with its exit code printed. The weak pointer test,
+found while chasing the \texttt{imul} defect, was never strengthened.
 
 \paragraph{Oracles that could not observe.} A \defect{D-C09-03}{QEMU serial socket} in
 \texttt{server,nowait} mode discards everything the guest prints before a client
 connects, so a script waiting for the boot banner timed out on a healthy machine. A
 \defect{D-C10-06}{screencast recorder} assumed 320$\times$200 frames where QEMU produces 640$\times$400, and
-the agent first blamed a torn file read. Each time, the agent had to debug its
-instrument before it could trust it again.
+the agent first blamed a torn file read. Both were caught by their symptom only: the
+script waited for a banner that a healthy machine had already printed, and the frames,
+looked at by the agent, were sheared and double-exposed. Neither symptom points at the
+instrument, so the agent first suspected the system or the wrong part of the
+instrument. A stricter re-read, its first fix for the recorder, rejected every frame and
+produced an empty video. Each time, the agent had to debug its instrument before it could
+trust it again.
 
 \paragraph{Oracles that killed themselves.} \defect{D-C10-05}{Several commands} killed
-leftover QEMU processes with \texttt{pkill -f} and a pattern that also matched the command line of
-the shell running it, so the shell died and the test never ran. The symptom, a
-silent exit code, looks exactly like a failing system.
+leftover QEMU processes with \texttt{pkill -f} and a pattern that probably also matched the
+command line of the shell running it, so the shell died and the test never ran. The
+symptom, exit code 1 with no output at all, looks exactly like a failing system. The agent
+noticed only after repeated runs that printed nothing, not even the test's first line.
+It never fixed the cause: it worked around it by running \texttt{pkill} and the test in
+separate tool calls.
 
+
+\subsection{Guidelines for oracle design}\label{sec:guidelines}
+
+The defects above, in the product and in the oracles, suggest the following guidelines
+for the oracles of a coding agent. None is new to testing; what is new is that the agent,
+not a human, writes the oracles, and that the agent trusts their verdicts.
+\begin{enumerate}
+  \item \textbf{State the expected output.} An oracle that waits for an error misses
+        silent defects. Compare the observed behavior with an expected value.
+  \item \textbf{Check against something independent.} Code that writes and reads its own
+        data agrees with itself even when wrong. Use a reference implementation while one
+        exists (\texttt{gcc}, \texttt{objcopy}), code the agent did not write (the Linux
+        kernel, the BIOS), or a fixed point (Equation~\eqref{eq:fixpoint}).
+  \item \textbf{Run the real workload end to end.} The unit tests cover what the agent
+        thought of; the product covers what it uses. Keep a test that boots the whole
+        system, and confirm on it.
+  \item \textbf{Make every oracle able to fail, and show that it does.} A test that is
+        skipped, or that passes with a known defect, is no oracle. Count a skip as a
+        failure, and check a new test once against a known-bad input.
+  \item \textbf{Derive one verdict from exit codes, never from printed text.} A step that
+        prints a success line unconditionally lies after a failure. A missing verdict, a
+        hang or a crash of the harness, counts as a failure
+        (Table~\ref{tab:oracles}, \emph{No verdict}).
+  \item \textbf{Validate the instrument on a healthy system.} When a check fails, first
+        ask whether the instrument can observe at all: capture from the start, check frame
+        sizes, run it once on a known-good build.
+  \item \textbf{Keep the harness out of the system's way.} Process cleanup, sockets and
+        timeouts belong to the harness; a harness that can kill itself produces the same
+        symptom as a broken system.
+\end{enumerate}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Threats to Validity}\label{sec:threats}
 
 The defect analysis relies on annotator agents reading the transcript. They may have
-missed defects or misjudged a cause; we mitigated this with mandatory verbatim
+missed defects or misjudged a cause; we mitigated this with verified verbatim
 evidence, an automatic check of every quote and tool call, a coverage check against
-the commit messages, and a manual check of a random sample. Oracle verdicts are read from the transcript by matching each
+the commit messages, and a manual check of a random sample. 
+
+Oracle verdicts are read from the transcript by matching each
 script's \texttt{PASS} and \texttt{FAIL} lines. A run counts only when a shell command
 executes the oracle's script; a single test case run by hand does not, so the run counts
-are a lower bound. Active time is
+are a lower bound.
+
+Active time is
 estimated from transcript timestamps, counting gaps shorter than ten minutes; a long
 build without output would be counted as idle. This is one session with one model, so
 it shows that the result is possible, not how often it happens. Finally, the system runs
@@ -543,27 +613,29 @@ reported coding agents building systems far beyond single features, mostly in bl
 rather than papers. The closest to \sysname{} is Anthropic's C compiler~\cite{carlini2026ccc}:
 16 parallel Claude Opus 4.6 agents, nearly 2{,}000 sessions and about \$20{,}000 produced a
 100{,}000-line Rust compiler that builds Linux 6.9 for three architectures. It has no
-assembler or linker of its own and calls GCC for 16-bit x86 code, whereas \sysname{} owns
-its assembler, compiler and linker and reaches a self-hosting fixed point, at a far
-smaller scale. Its author used GCC as the oracle, compiling a random part of the kernel
-with GCC and the rest with the new compiler to locate failures. Cursor ran hundreds of
+assembler or linker of its own and calls GCC for 16-bit x86 code.
+%% Key difference
+\sysname{} owns its assembler, compiler and linker and reaches a self-hosting fixed point. 
+
+% cursor
+Cursor ran hundreds of
 agents for about a week in a planner, worker and judge hierarchy to build FastRender, a
 web browser of over a million lines~\cite{lin2026scaling}. Huntley ran Claude in a loop
 with a single prompt for three months and obtained \emph{cursed}, a programming language
 with an LLVM back end~\cite{huntley2025cursed}. Stenström built JustHTML, an HTML5 parser
 that passes the 9{,}200 tests of html5lib-tests, and states the lesson this paper also
-draws: \emph{``you need a way for them to understand their own progress. A complete test
-suite is perfect for that''}~\cite{stenstrom2025justhtml}. Closest in domain, Suiche
+draws: \todo{don't quote in related work}\emph{``you need a way for them to understand their own progress. A complete test
+suite is perfect for that''}~\cite{stenstrom2025justhtml}.
+\todo{one sentence with key difference, our key novelty}
+
+Closest in domain, Suiche
 reports that Claude Fable 5 wrote the core of \texttt{ntoskrnl-rs}, an NT-style x86-64
-kernel in Rust that boots in QEMU and passes its self-tests, in 38 minutes of active
-work, in June 2026~\cite{suiche2026ntoskrnl}. As a kernel it is more ambitious than
+kernel in Rust that boots in QEMU and passes its self-tests. ~\cite{suiche2026ntoskrnl}. As a kernel it is more ambitious than
 \sysname{}'s: it has a scheduler, a memory manager with page tables, and interrupt-driven
 timers, and later work ran unmodified Windows drivers and programs. But it is a Rust
 project compiled by \texttt{rustc}, and its core has no file system, shell or user
-programs. Three things set \sysname{} apart: one agent in one
-session, with no multi-agent orchestration; a whole stack from boot sector to a
-self-hosted toolchain with no third-party compiler left in the build; and a complete
-transcript from which every number here is computed.
+programs. What set \sysname{} apart is a whole stack from boot sector to a
+self-hosted toolchain with no third-party compiler left in the build.
 
 \paragraph{Benchmarks for building from scratch.} HumanEval~\cite{chen2021codex} measures
 function-level synthesis, and SWE-bench~\cite{jimenez2024swebench} measures issue
@@ -571,18 +643,13 @@ resolution in existing repositories. Commit0~\cite{zhao2025commit0} asks agents 
 implement 54 Python libraries from a specification and unit tests. ProjectEval~\cite{liu2025projecteval}
 and ProjDevBench~\cite{lu2026projdevbench} evaluate whole projects generated from natural
 language requirements. In all of them the oracle is given to the agent. In \sysname{} the
-agent wrote its oracles too (Section~\ref{sec:defects}).
+agent wrote its oracles too, as it would be done in the real world (Section~\ref{sec:defects}).
 
 \paragraph{Agents that play games.} In Claude Plays Pokémon, Claude plays Pokémon Red
 through an emulator, reading the screen and pressing buttons~\cite{techcrunch2025pokemon}.
 Tiny Monsters reverses the setup: the agent wrote the game, the OS under it and the
 toolchain that built both, and designed a text interface over the serial port so that an
 agent can play without reading pixels.
-
-\paragraph{Trusting a self-hosted toolchain.} Thompson's Turing lecture on trusting
-compilers~\cite{thompson1984trusting} is the classic warning that a self-hosted toolchain
-is only as trustworthy as its first generation. Here that generation is built by the host
-C compiler from source the agent wrote.
 
 \section{Conclusion}\label{sec:conclusion}
 
@@ -591,6 +658,8 @@ assembler, compiler and linker that build it, up to a byte-identical self-hostin
 point. The human set goals and said ``go''. The OS was the easy part. Most of the effort
 and most of the defects went into the toolchain, and most defects were found by booting
 the machine.
+
+\todo{recall what general knowledge we got from this experiment}
 
 \appendix
 
