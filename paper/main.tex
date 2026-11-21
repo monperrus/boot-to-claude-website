@@ -92,8 +92,8 @@ built both.
 carries over to other agents and other systems:
 \begin{itemize}
   \item \textbf{An agent is as good as its oracles.} The agent worked in a loop: change
-        the code, run an oracle, iterate until it passes. Defects that an oracle could not
-        see stayed in (Section~\ref{sec:oracles}).
+        the code, run an oracle, iterate until it passes. A defect that its oracle could not
+        see stayed in until another oracle did (Section~\ref{sec:oracles}).
   \item \textbf{Most defects are silent.} \ntsilent{} of the \ntproduct{} product defects
         produced no error message at all. An oracle that waits for an error misses them; it
         has to state the expected output and compare (Section~\ref{sec:defectlist}).
