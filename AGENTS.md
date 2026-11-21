@@ -3,8 +3,7 @@
 ## Goal
 
 Write a LaTeX paper whose source of truth is `paper/main.tex`, compiled to a
-claude.ai artifact (an HTML page) that **always stays in sync** with the source.
-A commit where the published artifact differs from what the source builds to is a bug.
+self-contained HTML page (`build/paper.html`) for reading.
 
 ## Paper
 
@@ -35,32 +34,23 @@ on any link from the paper or within the site to a missing page or anchor.
 
 - `paper/main.tex`, `paper/refs.bib`: the paper. Edit only these (and figures in `paper/`).
 - `tools/template.html`: pandoc template for the page (title, styles, light/dark tokens).
-- `tools/filters.lua`: pandoc filter that numbers equations and resolves `\eqref`.
-- `tools/build.py`: LaTeX → `build/paper.html` (gitignored), images inlined as data URIs (the artifact CSP blocks other image sources). Deterministic output.
-- `artifact.json`: the published artifact `url` and the `sha256` of the HTML last published there. It is committed.
-- `.githooks/pre-commit` runs `tools/build.py --check` and refuses the commit when the artifact is stale.
+- `tools/filters.lua`: pandoc filter that numbers equations, tables and figures (caption prefixes "Table N.") and resolves `\ref`/`\eqref`.
+- `tools/build.py`: LaTeX → `build/paper.html` (gitignored), images inlined as data URIs so the page is one file. Deterministic output.
 
 ## Workflow (every change to the paper)
 
 1. Edit `paper/*.tex|bib`.
-2. `.venv/bin/python tools/build.py` writes `build/paper.html` and prints its sha256.
+2. `.venv/bin/python tools/build.py` writes `build/paper.html`; check the rendered page.
    If the change adds links into the site: `tools/site.py && tools/site.py --check`.
-3. Publish `build/paper.html` with the Artifact tool, passing `url` from `artifact.json`.
-   Never create a second artifact.
-4. `.venv/bin/python tools/build.py --mark-published` records the new hash in `artifact.json`.
-5. Commit. The pre-commit hook checks that the hash recorded in `artifact.json` matches a fresh build.
-
-Only the agent can publish: the Artifact tool is not a CLI. So step 3 cannot be
-automated in a hook. The hook makes a forgotten step 3 fail the commit.
+3. Commit.
 
 ## Setup
 
 ```sh
 uv venv .venv && uv pip install --python .venv/bin/python pypandoc_binary
-git config core.hooksPath .githooks
 ```
 
-`pypandoc_binary` bundles pandoc. No TeX distribution is needed for the HTML artifact.
+`pypandoc_binary` bundles pandoc. No TeX distribution is needed for the HTML page.
 
 ## LaTeX subset
 
