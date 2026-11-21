@@ -244,7 +244,7 @@ machine \sysname{} runs on, not part of what builds it.
 
 \input{gen/tab-size}
 
-\subsection{Tiny Monsters: A Game Made for an AI Player}\label{sec:game}
+\subsection{Tiny Monsters}\label{sec:game}
 
 % design and implementation
 Now that we have a working operating system,  we implement and play with a Pokemon like game.
@@ -252,16 +252,6 @@ The result, \emph{Tiny Monsters}, is the most visible demonstration of the full 
 stack. Every pixel in Figure~\ref{fig:battle} is drawn by code Claude wrote, compiled by
 the compiler Claude wrote, on a kernel Claude wrote.
 
-\paragraph{Played first by Claude.} The game was designed for an AI player from the first
-request (\emph{``a Pokemon like game such that an AI agent later plays over serial port''}),
-and its first player was Claude itself. Before the human saw the game, the serial game
-test that the agent wrote along with it had already fought full battles over the serial
-port (Table~\ref{tab:oracles}). When asked to play for five minutes, the agent booted the
-OS without a display, wrote a player that connects to QEMU's serial socket, and played
-\playruns{} runs in \playseconds{} seconds, restarting after each faint, with no human and no
-keyboard in the loop. The player is a script, not the model deciding each move: it picks
-the starter and the moves at random and now and then runs away. Claude played the way a
-tester plays, to exercise the game, not to win it.
 
 \begin{figure}[h]
 \centering
@@ -301,11 +291,15 @@ same, so the machine player sees no difference. Returning to the shell restores 
 mode, which took a debugging session of its own because \defect{D-C09-05}{mode 13h
 overwrites the video memory plane} where the text font lives.
 
-\paragraph{Screencasts.} The agent recorded both versions as videos: the five-minute
-serial session, and the graphical battle screen from which Figure~\ref{fig:battle} is
-taken. For the second, it drove the game with emulated keystrokes and captured QEMU's
-frame buffer, after fixing \defect{D-C10-06}{two} \defect{D-C10-07}{bugs} in its own
-capture script along the way.
+\paragraph{Built by AI, played by AI.} The game was designed for an AI player from the first
+request (\emph{``a Pokemon like game such that an AI agent later plays over serial port''}),
+and its first player was Claude itself. Before the human saw the game, the serial game
+test that the agent wrote along with it had already fought full battles over the serial
+port (Table~\ref{tab:oracles}). When asked to play for five minutes, the agent booted the
+OS without a display, wrote a player that connects to QEMU's serial socket, and played
+\playruns{} runs in \playseconds{} seconds, restarting after each faint, with no human and no
+keyboard in the loop. 
+
 
 \section{How It Was Built}\label{sec:history}
 
@@ -332,53 +326,6 @@ behavior-preserving before the new toolchain was in the loop.
 Equation~\eqref{eq:fixpoint}. Compiling the toolchain with itself required features it
 had never needed for the kernel: variadic functions, multi-dimensional arrays, and the
 minimal C library.
-
-\section{What the Human Did}\label{sec:human}
-
-Table~\ref{tab:prompts} lists the human's prompts verbatim, up to the request to play the
-game. Three kinds stand out.
-
-\paragraph{Direction.} Five prompts set the direction, quoted here verbatim:
-\begin{itemize}
-  \item \emph{``I want to ask Claude to write a tiny OS with a tiny file system, with a tiny
-        compiler and scripting language, all to be used in qemu/kvm or equivalent. the goal
-        is that 100\% of lines of code come from Claude. Make a plan.''}
-  \item \emph{``now make a plan to implement AS CC HOSTCC LD OBJCOPY and make such that we
-        can build the system with generated tools only. The CC should compile the other
-        tools and be self-hosted of course.''}
-  \item \emph{``now install and test the self-hosted compiler inside tinyos.''}
-  \item \emph{``implement in tinyos a Pokemon like game such that an AI agent later plays
-        over serial port.''}
-  \item \emph{``very good, it works, next step is to to make a good looking GUI like
-        Pokemon Ruby on GBA.''}
-\end{itemize}
-The other prompts were errands around the result, such as recording and hosting a
-screencast.
-
-\paragraph{Go-aheads.} A coding agent does not run a long plan to its end on its own. It
-is built to stop at natural boundaries, such as the end of a planned phase, report what it
-did, and wait for the human to confirm before it goes on, even when the plan is already
-approved. The human then has to nudge it forward. Here the agent ran phases 0 to 6 of the
-OS without a single stop, but stopped after every phase of the toolchain.
-\ngoaheads{} of the \nprompts{} prompts are such nudges, of three words or fewer:
-``go'', ``proceed'', ``continue'', ``Do T3.''. Each starts the next phase of a plan the
-agent wrote; none adds information. The human also approved the agent's \napprovals{}
-plans.
-
-\paragraph{Decisions.} The human answered \nquestions{} multiple-choice questions from
-the agent and dismissed \ndismissed{} (Table~\ref{tab:questions}). In \nrecommended{} of
-them the human picked the option the agent had marked as recommended; only one answer was
-free text. One recommended answer was overturned later: at the start, the human accepted
-the agent's proposal to use the existing assembler and linker as tools, and the request
-for a self-hosted toolchain reversed it. The human's own technical input was two prompts. One reported that typing in
-\texttt{make run} showed nothing. The other questioned whether \texttt{objcopy} was needed
-at all, which removed a planned phase (T6). One goal was dropped: when asked to run the
-compiler inside the OS, the agent explained that the OS has no way to load native code,
-and the human moved on to the game instead.
-
-\input{gen/tab-prompts}
-
-\input{gen/tab-questions}
 
 \section{Defects}\label{sec:defectlist}
 
@@ -498,36 +445,6 @@ It never fixed the cause: it worked around it by running \texttt{pkill} and the 
 separate tool calls.
 
 
-\subsection{Guidelines for oracle design}\label{sec:guidelines}
-
-The defects above, in the product and in the oracles, suggest the following guidelines
-for the oracles of a coding agent. None is new to testing; what is new is that the agent,
-not a human, writes the oracles, and that the agent trusts their verdicts.
-\begin{enumerate}
-  \item \textbf{State the expected output.} An oracle that waits for an error misses
-        silent defects. Compare the observed behavior with an expected value.
-  \item \textbf{Check against something independent.} Code that writes and reads its own
-        data agrees with itself even when wrong. Use a reference implementation while one
-        exists (\texttt{gcc}, \texttt{objcopy}), code the agent did not write (the Linux
-        kernel, the BIOS), or a fixed point (Equation~\eqref{eq:fixpoint}).
-  \item \textbf{Run the real workload end to end.} The unit tests cover what the agent
-        thought of; the product covers what it uses. Keep a test that boots the whole
-        system, and confirm on it.
-  \item \textbf{Make every oracle able to fail, and show that it does.} A test that is
-        skipped, or that passes with a known defect, is no oracle. Count a skip as a
-        failure, and check a new test once against a known-bad input.
-  \item \textbf{Derive one verdict from exit codes, never from printed text.} A step that
-        prints a success line unconditionally lies after a failure. A missing verdict, a
-        hang or a crash of the harness, counts as a failure
-        (Table~\ref{tab:oracles}, \emph{No verdict}).
-  \item \textbf{Validate the instrument on a healthy system.} When a check fails, first
-        ask whether the instrument can observe at all: capture from the start, check frame
-        sizes, run it once on a known-good build.
-  \item \textbf{Keep the harness out of the system's way.} Process cleanup, sockets and
-        timeouts belong to the harness; a harness that can kill itself produces the same
-        symptom as a broken system.
-\end{enumerate}
-
 \section{Correctness and Oracles}\label{sec:oracles}
 
 A coding agent is as strong as the oracles it uses. The agent proposes a change, the oracle
@@ -583,6 +500,37 @@ checks the toolchain against itself and needs no reference at all.
 is where the oracles mattered most: \ntsevenfailed{} of the \noraclesfailed{} failing oracle
 runs of the whole session happened in that phase alone. When such a failure exposed a
 defect, the agent added a regression test for its class.
+
+\section{Guidelines for Oracle Design}\label{sec:guidelines}
+
+The defects of Section~\ref{sec:defectlist}, in the product and in the oracles, and the
+oracles of Section~\ref{sec:oracles} suggest the following guidelines
+for the oracles of a coding agent. None is new to testing; what is new is that the agent,
+not a human, writes the oracles, and that the agent trusts their verdicts.
+\begin{enumerate}
+  \item \textbf{State the expected output.} An oracle that waits for an error misses
+        silent defects. Compare the observed behavior with an expected value.
+  \item \textbf{Check against something independent.} Code that writes and reads its own
+        data agrees with itself even when wrong. Use a reference implementation while one
+        exists (\texttt{gcc}, \texttt{objcopy}), code the agent did not write (the Linux
+        kernel, the BIOS), or a fixed point (Equation~\eqref{eq:fixpoint}).
+  \item \textbf{Run the real workload end to end.} The unit tests cover what the agent
+        thought of; the product covers what it uses. Keep a test that boots the whole
+        system, and confirm on it.
+  \item \textbf{Make every oracle able to fail, and show that it does.} A test that is
+        skipped, or that passes with a known defect, is no oracle. Count a skip as a
+        failure, and check a new test once against a known-bad input.
+  \item \textbf{Derive one verdict from exit codes, never from printed text.} A step that
+        prints a success line unconditionally lies after a failure. A missing verdict, a
+        hang or a crash of the harness, counts as a failure
+        (Table~\ref{tab:oracles}, \emph{No verdict}).
+  \item \textbf{Validate the instrument on a healthy system.} When a check fails, first
+        ask whether the instrument can observe at all: capture from the start, check frame
+        sizes, run it once on a known-good build.
+  \item \textbf{Keep the harness out of the system's way.} Process cleanup, sockets and
+        timeouts belong to the harness; a harness that can kill itself produces the same
+        symptom as a broken system.
+\end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -661,6 +609,53 @@ the machine.
 \todo{recall what general knowledge we got from this experiment}
 
 \appendix
+
+\section*{Appendix: What the Human Did}\label{sec:human}
+
+Table~\ref{tab:prompts} lists the human's prompts verbatim, up to the request to play the
+game. Three kinds stand out.
+
+\paragraph{Direction.} Five prompts set the direction, quoted here verbatim:
+\begin{itemize}
+  \item \emph{``I want to ask Claude to write a tiny OS with a tiny file system, with a tiny
+        compiler and scripting language, all to be used in qemu/kvm or equivalent. the goal
+        is that 100\% of lines of code come from Claude. Make a plan.''}
+  \item \emph{``now make a plan to implement AS CC HOSTCC LD OBJCOPY and make such that we
+        can build the system with generated tools only. The CC should compile the other
+        tools and be self-hosted of course.''}
+  \item \emph{``now install and test the self-hosted compiler inside tinyos.''}
+  \item \emph{``implement in tinyos a Pokemon like game such that an AI agent later plays
+        over serial port.''}
+  \item \emph{``very good, it works, next step is to to make a good looking GUI like
+        Pokemon Ruby on GBA.''}
+\end{itemize}
+The other prompts were errands around the result, such as recording and hosting a
+screencast.
+
+\paragraph{Go-aheads.} A coding agent does not run a long plan to its end on its own. It
+is built to stop at natural boundaries, such as the end of a planned phase, report what it
+did, and wait for the human to confirm before it goes on, even when the plan is already
+approved. The human then has to nudge it forward. Here the agent ran phases 0 to 6 of the
+OS without a single stop, but stopped after every phase of the toolchain.
+\ngoaheads{} of the \nprompts{} prompts are such nudges, of three words or fewer:
+``go'', ``proceed'', ``continue'', ``Do T3.''. Each starts the next phase of a plan the
+agent wrote; none adds information. The human also approved the agent's \napprovals{}
+plans.
+
+\paragraph{Decisions.} The human answered \nquestions{} multiple-choice questions from
+the agent and dismissed \ndismissed{} (Table~\ref{tab:questions}). In \nrecommended{} of
+them the human picked the option the agent had marked as recommended; only one answer was
+free text. One recommended answer was overturned later: at the start, the human accepted
+the agent's proposal to use the existing assembler and linker as tools, and the request
+for a self-hosted toolchain reversed it. The human's own technical input was two prompts. One reported that typing in
+\texttt{make run} showed nothing. The other questioned whether \texttt{objcopy} was needed
+at all, which removed a planned phase (T6). One goal was dropped: when asked to run the
+compiler inside the OS, the agent explained that the OS has no way to load native code,
+and the human moved on to the game instead.
+
+\input{gen/tab-prompts}
+
+\input{gen/tab-questions}
 
 \section*{Appendix: Phases of the Session}\label{app:phases}
 
