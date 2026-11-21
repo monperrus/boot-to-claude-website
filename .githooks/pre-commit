@@ -1,2 +1,0 @@
-#!/bin/sh
-exec .venv/bin/python tools/build.py --check

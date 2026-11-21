@@ -120,7 +120,7 @@ built both.
 \paragraph{Total AI authorship.} We aim at total AI authorship of a computing system: every line of
 code, in the system and in everything that builds it, is produced by an AI coding agent.
 We use a coding agent to generate this computing system.
-We decompose this goal into two claims.
+We decompose this goal into three claims.
 \begin{description}
   \item[Full AI-written kernel.] No line in the kernel is written by
         a human or taken from an existing project.
@@ -159,7 +159,28 @@ operand-size prefix, for example, showed up as a corrupted file system
 on a bare machine and that lets a user write and run programs in
 languages of its own. Concretely, a boot loader, a kernel, a file system, an interactive
 shell, an interpreted scripting language, and a compiled language. Then the tools that build all of it: an assembler, a C compiler and a linker.
-\todo{add a summary table of what we want}
+Table~\ref{tab:goal} sums up what is required of each part.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+Part & Written or built by & Claim \\
+\hline
+Boot loader: boot sector, second stage & the agent & AI-written kernel \\
+Kernel: memory, drivers, CPU exceptions & the agent & AI-written kernel \\
+File system and shell & the agent & AI-written kernel \\
+Scripting language, compiled language & the agent & AI-written kernel \\
+Assembler, C compiler, linker & the agent & AI-written stack \\
+Build of the OS & the agent's toolchain only & Full bootstrap \\
+Build of the toolchain & the agent's toolchain, to a fixed point & Full bootstrap \\
+\hline
+First binary of the toolchain & the host C compiler, once & allowed exception \\
+The machine & QEMU & outside the system \\
+\end{tabular}
+\caption{The goal: every part of the system and of its build, who may write or build it, and the
+claim it supports. The two parts below the line are the only ones not written by the agent.}
+\label{tab:goal}
+\end{table}
 
 \section{\sysname}\label{sec:system}
 
@@ -229,10 +250,16 @@ The result, \emph{Tiny Monsters}, is the most visible demonstration of the full 
 stack. Every pixel in Figure~\ref{fig:battle} is drawn by code Claude wrote, compiled by
 the compiler Claude wrote, on a kernel Claude wrote.
 
-% who plays Claude
-\todo{Who plays the game? Claude itself, write this key paragraph and the game was first played by
-Claude.
-}
+\paragraph{Played first by Claude.} The game was designed for an AI player from the first
+request (\emph{``a Pokemon like game such that an AI agent later plays over serial port''}),
+and its first player was Claude itself. Before the human saw the game, the serial game
+test that the agent wrote along with it had already fought full battles over the serial
+port (Table~\ref{tab:oracles}). When asked to play for five minutes, the agent booted the
+OS without a display, wrote a player that connects to QEMU's serial socket, and played
+\playruns{} runs in \playseconds{} seconds, restarting after each faint, with no human and no
+keyboard in the loop. The player is a script, not the model deciding each move: it picks
+the starter and the moves at random and now and then runs away. Claude played the way a
+tester plays, to exercise the game, not to win it.
 
 \begin{figure}[h]
 \centering
@@ -256,9 +283,7 @@ serial port was output only. The agent added serial input and made the shell and
 game poll both sources (\inputlines{} lines in \texttt{input.c}), so a human at the
 keyboard and a program on the serial line can drive the same session interchangeably.
 The game speaks a plain text protocol: it prints the screen as text, and reads a digit,
-\texttt{run} or \texttt{quit}. Asked to play for five minutes, the agent connected a
-script to QEMU's serial socket and played \playruns{} runs in \playseconds{} seconds,
-restarting after each faint. Playing found a \defect{D-C09-01}{real bug}: the random move
+\texttt{run} or \texttt{quit}. Playing found a \defect{D-C09-01}{real bug}: the random move
 picker took a modulo of a 32-bit value with the sign bit set, which \sysname{}'s compiler
 only supports as signed division, and read a garbage move name with absurd damage.
 
@@ -285,13 +310,10 @@ capture script along the way.
 The work happened in one Claude Code session using \sessionmodel{}, with
 \nassistant{} model responses and \ntoolcalls{} tool calls, of which \nbash{} shell
 commands and \nedit{} file writes or edits. The context window filled up and was
-summarized \ncompactions{} times. Table~\ref{tab:timeline} splits the session at each
-phase commit. Of the \ncommits{} commits in the repository, all but two were committed by
+summarized \ncompactions{} times. Table~\ref{tab:phases}, in the appendix, splits the session at each phase commit. Of the \ncommits{} commits in the repository, all but two were committed by
 the agent. The other two are the initial empty commit and a ten-line Makefile target for
 running QEMU with a display. The agent wrote that target in response to the human's
 report that typing showed nothing, and the human ran \texttt{git commit}.
-
-\input{gen/tab-timeline}
 
 \paragraph{The OS in one sitting.} The agent asked four design questions, wrote a plan,
 and the human approved it. Phases 0 to 6, from an empty boot sector to a compiler with a
@@ -311,33 +333,50 @@ minimal C library.
 
 \section{What the Human Did}\label{sec:human}
 
-\todo{Table~\ref{tab:prompts} are not the prompts, I want to see the exact promprt in the table (not the phase, not metrics)}
+Table~\ref{tab:prompts} lists the human's prompts verbatim, up to the request to play the
+game. Three kinds stand out.
 
+\paragraph{Direction.} Five prompts set the direction, quoted here verbatim:
+\begin{itemize}
+  \item \emph{``I want to ask Claude to write a tiny OS with a tiny file system, with a tiny
+        compiler and scripting language, all to be used in qemu/kvm or equivalent. the goal
+        is that 100\% of lines of code come from Claude. Make a plan.''}
+  \item \emph{``now make a plan to implement AS CC HOSTCC LD OBJCOPY and make such that we
+        can build the system with generated tools only. The CC should compile the other
+        tools and be self-hosted of course.''}
+  \item \emph{``now install and test the self-hosted compiler inside tinyos.''}
+  \item \emph{``implement in tinyos a Pokemon like game such that an AI agent later plays
+        over serial port.''}
+  \item \emph{``very good, it works, next step is to to make a good looking GUI like
+        Pokemon Ruby on GBA.''}
+\end{itemize}
+The other prompts were errands around the result, such as recording and hosting a
+screencast.
 
-\todo{current Table~\ref{tab:prompts} will becorem Table~\ref{tab:phases} to talk about the speed of implementation, move to appendix}
-Table~\ref{tab:prompts} lists the prompts up to the game. Three kinds stand out.
-
-\paragraph{Prompts.} 
-\todo{copy them verbatim here} Five prompts set the direction: the opening request, the request for
-a self-hosted toolchain, a request to install the compiler inside the OS, a game an agent
-could play over serial, and a graphical screen for that game. A few more were errands
-around the result, such as recording and hosting a screencast.
-
-\paragraph{Go-aheads prompts.}
-\todo{first give some background on the fact that llms lack autonomy and need this nudges. then say how many of them we did}
-\nshortprompts{} of the \nprompts{} prompts have three words or
-fewer: ``go'', ``proceed'', ``Do T3.''. They start the next phase of a plan the agent
-wrote. The human also approved the agent's \napprovals{} plans.
+\paragraph{Go-aheads.} A coding agent does not run a long plan to its end on its own. It
+is built to stop at natural boundaries, such as the end of a planned phase, report what it
+did, and wait for the human to confirm before it goes on, even when the plan is already
+approved. The human then has to nudge it forward. Here the agent ran phases 0 to 6 of the
+OS without a single stop, but stopped after every phase of the toolchain.
+\ngoaheads{} of the \nprompts{} prompts are such nudges, of three words or fewer:
+``go'', ``proceed'', ``continue'', ``Do T3.''. Each starts the next phase of a plan the
+agent wrote; none adds information. The human also approved the agent's \napprovals{}
+plans.
 
 \paragraph{Decisions.} The human answered \nquestions{} multiple-choice questions from
-the agent \todo{add link to table}. In \nrecommended{} of them the human picked the option the agent had marked
-as recommended; only one answer was free text. The human's own technical input was two prompts. One reported that typing in
+the agent and dismissed \ndismissed{} (Table~\ref{tab:questions}). In \nrecommended{} of
+them the human picked the option the agent had marked as recommended; only one answer was
+free text. One recommended answer was overturned later: at the start, the human accepted
+the agent's proposal to use the existing assembler and linker as tools, and the request
+for a self-hosted toolchain reversed it. The human's own technical input was two prompts. One reported that typing in
 \texttt{make run} showed nothing. The other questioned whether \texttt{objcopy} was needed
 at all, which removed a planned phase (T6). One goal was dropped: when asked to run the
 compiler inside the OS, the agent explained that the OS has no way to load native code,
 and the human moved on to the game instead.
 
 \input{gen/tab-prompts}
+
+\input{gen/tab-questions}
 
 \section{Correctness and Oracles}\label{sec:defects}
 
@@ -358,10 +397,12 @@ oracle run, and \ntconfirmedinrun{} fixes were confirmed by one.
 \input{gen/tab-oracles}
 
 \paragraph{Single observation channel.} Every oracle that runs the OS can only read
-the serial console. The kernel prints everything to console and COM1.
-\todo{sentence unclear: The
-CPU exception handlers print the faulting vector before halting, and QEMU runs headless
-with its serial port captured to a file}. With this design, a crash, a hang and a wrong answer all are text the agent can read. The agent built this channel in phase 0, before there was
+the serial console. The kernel writes every line of output twice, to the VGA screen and
+to the COM1 serial port. Even a crash is written: the CPU exception handlers print the
+number of the faulting exception to the serial port before halting the machine. The
+oracles run QEMU without a display and save everything the serial port receives to a
+file, which the agent reads. With this design, a crash, a hang and a wrong answer all are
+text the agent can read. The agent built this channel in phase 0, before there was
 anything to test, and kept it for six days.
 
 \paragraph{Binary verdicts.} Each scripted oracle ends with one line, \texttt{PASS} or
@@ -388,13 +429,18 @@ the loop. The linker's flat output was compared byte for byte with \texttt{objco
 Once the old tools were gone, Equation~\eqref{eq:fixpoint} took over: the bootstrap
 checks the toolchain against itself and needs no reference at all.
 
-\paragraph{Regression tests.} When the switch-over to the new toolchain surfaced a
-defect, the agent added a regression test for its class. \todo{very unclear: \ntsevenfailed{} of the \noraclesfailed{} failing
-oracle runs happened in that phase, which is where the oracles earned their keep.}
+\paragraph{Regression tests.} Switching the build over to the new toolchain (phase T7)
+is where the oracles mattered most: \ntsevenfailed{} of the \noraclesfailed{} failing oracle
+runs of the whole session happened in that phase alone. When such a failure exposed a
+defect, the agent added a regression test for its class.
 
 \section{Defects}\label{sec:defectlist}
 
-\todo{what's our goal here? why is that interesting for the reader? say the goal first}
+Section~\ref{sec:defects} described the oracles; this section describes what they were up
+against. We want to know which mistakes a coding agent makes when it writes a whole system
+from nothing, where in the system they are, and what it takes to find them. This matters
+to anyone who reviews such a system: if a defect leaves no trace in the history, a reviewer
+who reads only the commits cannot see what the agent got wrong.
 
 \subsection{Method.} Commit messages report the defects the agent chose to mention. To
 see all of them, we cut the transcript into ten chunks at phase boundaries and had ten
@@ -545,6 +591,15 @@ assembler, compiler and linker that build it, up to a byte-identical self-hostin
 point. The human set goals and said ``go''. The OS was the easy part. Most of the effort
 and most of the defects went into the toolchain, and most defects were found by booting
 the machine.
+
+\appendix
+
+\section*{Appendix: Phases of the Session}\label{app:phases}
+
+Table~\ref{tab:phases} gives the speed of implementation phase by phase: the time, the
+code written and the agent effort between two phase commits.
+
+\input{gen/tab-phases}
 
 \bibliographystyle{plain}
 \bibliography{refs}

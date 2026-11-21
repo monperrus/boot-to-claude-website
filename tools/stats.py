@@ -33,7 +33,7 @@ MAIN_SESSION = "trajectories/03468d1c-5b29-4e24-8f0d-2a7435d227ab.jsonl"
 IDLE = timedelta(minutes=10)
 CEST = timezone(timedelta(hours=2))
 
-# Rows of the timeline table: short hash -> label. Commits not listed here are folded
+# Rows of the phases table: short hash -> label. Commits not listed here are folded
 # into the next listed one.
 PHASES = {
     "42f0af3": "0: boot sector, build pipeline",
@@ -132,6 +132,9 @@ def loc(repo: Path) -> dict[str, int]:
 GAME_FILES = ["kernel/vga.c", "kernel/font.c", "kernel/game/sprites.c", "kernel/game/battle_gui.c",
               "kernel/game/game.c", "kernel/input.c"]
 PROMPT_TABLE_LAST = "start the game and play for 5 minutes"
+# A go-ahead starts the next step of the agent's own plan: at most three words, opening
+# with one of these verbs ("o phase 9" is a typo of "do phase 9").
+GO_AHEAD = re.compile(r"^(go|proceed|continue|do|o)\b", re.I)
 PLAY_REPORT = re.compile(r"played (\d+) game runs across a real 5-minute \((\d+)s\) session")
 
 
@@ -276,6 +279,32 @@ def answers(rows: list[dict]) -> list[tuple[datetime, str]]:
     return out
 
 
+def asked(rows: list[dict], bounds: list[Commit]) -> list[dict]:
+    """Each AskUserQuestion question, with the agent's recommended option and the human's answer
+    (None when the human dismissed the whole tool call)."""
+    results = {
+        x["tool_use_id"]: str(x.get("content"))
+        for r in rows if r.get("type") == "user" and isinstance(r["message"].get("content"), list)
+        for x in r["message"]["content"] if isinstance(x, dict) and x.get("type") == "tool_result"
+    }
+    out = []
+    for r in rows:
+        if r.get("type") != "assistant":
+            continue
+        for c in r["message"].get("content") or []:
+            if not (isinstance(c, dict) and c.get("type") == "tool_use" and c["name"] == "AskUserQuestion"):
+                continue
+            res = results[c["id"]]
+            for q in c["input"]["questions"]:
+                m = re.search(re.escape(f'"{q["question"]}"="') + r'(.*?)"(?: selected preview|, "|\. )', res, re.S)
+                assert m or "doesn't want to proceed" in res, res[:200]
+                rec = [o["label"] for o in q["options"] if "recommended" in o["label"].lower()]
+                out.append({"when": ts(r), "anchor": f"{phase_page(ts(r), bounds)}.html#{c['id']}",
+                            "question": q["question"], "options": [o["label"] for o in q["options"]],
+                            "recommended": rec[0] if rec else None, "answer": m.group(1) if m else None})
+    return out
+
+
 def commit_calls(rows: list[dict]) -> list[datetime]:
     out = []
     for r in rows:
@@ -376,7 +405,7 @@ def analyse() -> dict:
         "tdefects": [d for d in json.loads((DATA / "trajectory-defects.json").read_text())
                      if not d.get("duplicate_of")],
         "usage": usage, "models": models, "tools": tools, "compactions": compactions,
-        "answers": ans, "approvals": approvals, "play": play_session(rows),
+        "answers": ans, "asked": asked(rows, bounds), "approvals": approvals, "play": play_session(rows),
         "oracles": oracle_runs(rows)[0], "oracle_log": oracle_runs(rows)[1],
         "commit_time": {c.sha: c.when for c in cs},
         "image_reads": image_reads(rows),
@@ -523,7 +552,7 @@ def write(st: dict) -> None:
     rows.append("\\hline")
     rows.append(f"after last commit & {site('t/after.html', 'screencasts, hosting')} & ---& --- & {len(a.prompts)} & "
                 f"{mins(a.active())} & {kilo(a.output_tokens)} & {a.tool_calls} \\\\")
-    (GEN / "tab-timeline.tex").write_text(head + "\\begin{table}[h]\n\\centering\n"
+    (GEN / "tab-phases.tex").write_text(head + "\\begin{table}[h]\n\\centering\n"
         "\\begin{tabular}{llrrrrrr}\n"
         "Commit (CEST) & Phase & Files & Lines added & Prompts & Active min & Output ktok & Tool calls \\\\\n"
         "\\hline\n" + "\n".join(rows) + "\n\\end{tabular}\n"
@@ -531,7 +560,7 @@ def write(st: dict) -> None:
         "\\emph{Active min} sums the gaps between transcript events shorter than "
         f"{mins(IDLE)} minutes, \\emph{{Output ktok}} is thousands of tokens generated. "
         "Work between two phase commits is attributed to the later one; four minor commits "
-        "are folded into the next phase.}\n\\label{tab:timeline}\n\\end{table}\n")
+        "are folded into the next phase.}\n\\label{tab:phases}\n\\end{table}\n")
 
     size_rows = []
     for label, prefix, indent in SIZE_ROWS:
@@ -558,6 +587,21 @@ def write(st: dict) -> None:
         f"game. The {omitted} later prompts are about recording and hosting screencasts and "
         "the graphical battle screen.}\n"
         "\\label{tab:prompts}\n\\end{table}\n")
+
+    qrows = []
+    for q in st["asked"]:
+        when = site("t/" + q["anchor"], q["when"].astimezone(CEST).strftime("%b %d, %H:%M"))
+        ans = tex_escape(q["answer"]) if q["answer"] else "\\emph{dismissed}"
+        if q["answer"] and q["answer"] not in q["options"]:
+            ans += " \\emph{(free text)}"
+        qrows.append(f"{when} & {tex_escape(' '.join(q['question'].split()))} & {ans} \\\\")
+    (GEN / "tab-questions.tex").write_text(head + "\\begin{table}[h]\n\\begin{tabular}{lp{7cm}p{5cm}}\n"
+        "Time (CEST) & Question of the agent, verbatim & Answer of the human \\\\\n\\hline\n"
+        + "\n".join(qrows) + "\n\\end{tabular}\n"
+        "\\caption{The multiple-choice questions the agent asked the human. Each question offered two "
+        "to four options, one of them marked \\emph{(Recommended)} by the agent; the human could also "
+        "type free text. \\emph{Dismissed}: the human rejected the question and changed the request.}\n"
+        "\\label{tab:questions}\n\\end{table}\n")
 
     o = st["oracles"]
 
@@ -606,7 +650,8 @@ def write(st: dict) -> None:
     macros = {
         "siteurl": SITE,
         "nprompts": len(st["prompts"]),
-        "nshortprompts": sum(1 for _, p in st["prompts"] if len(p.split()) <= 3),
+        "ngoaheads": sum(1 for _, p in st["prompts"] if len(p.split()) <= 3 and GO_AHEAD.match(p)),
+        "ndismissed": sum(1 for q in st["asked"] if q["answer"] is None),
         "napprovals": len(st["approvals"]),
         "plantoosmin": mins(st["plan_to_os"]),
         "nquestions": st["questions"],
