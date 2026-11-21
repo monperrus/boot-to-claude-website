@@ -88,7 +88,31 @@ minutes. Anthropic has shown Claude playing Pokémon Red~\cite{techcrunch2025pok
 here Claude also wrote the game, the operating system under it, and the compiler that
 built both.
 
-\todo{beyond the concrete build, the goal is to extract general knowledge from this and give a bullet list of we learned from this experiment}
+\paragraph{What we learned.} Beyond this one build, the experiment yields knowledge that
+carries over to other agents and other systems:
+\begin{itemize}
+  \item \textbf{An agent is as good as its oracles.} The agent worked in a loop: change
+        the code, run an oracle, iterate until it passes. Defects that an oracle could not
+        see stayed in (Section~\ref{sec:oracles}).
+  \item \textbf{Most defects are silent.} \ntsilent{} of the \ntproduct{} product defects
+        produced no error message at all. An oracle that waits for an error misses them; it
+        has to state the expected output and compare (Section~\ref{sec:defectlist}).
+  \item \textbf{The whole system is the best test program.} Booting the OS caught
+        toolchain defects that no unit test covered, because the unit tests cover only what
+        the agent thought of.
+  \item \textbf{The agent's oracles have defects too.} \ntoracle{} defects were in the
+        oracles themselves, and the worst of them made an oracle report success after a
+        failure. Oracle design deserves its own rules (Section~\ref{sec:guidelines}).
+  \item \textbf{The commit history hides half of the story.} \ntunreported{} of the
+        \ntproduct{} product defects were found and fixed between commits and appear only in
+        the transcript. Auditing an agent requires its transcript, not only its commits.
+  \item \textbf{The toolchain is harder than the OS.} \nttoolchain{} of the \ntproduct{}
+        product defects were in the assembler, compiler and linker. Removing the last
+        human-written tool from the build was most of the work.
+  \item \textbf{The human's role shrinks to goals and go-aheads.} The human wrote no code,
+        and \ngoaheads{} of its \nprompts{} prompts only told the agent to start the next
+        phase it had planned.
+\end{itemize}
 
 \paragraph{Contributions.}
 \begin{itemize}
@@ -505,8 +529,8 @@ defect, the agent added a regression test for its class.
 
 The defects of Section~\ref{sec:defectlist}, in the product and in the oracles, and the
 oracles of Section~\ref{sec:oracles} suggest the following guidelines
-for the oracles of a coding agent. None is new to testing; what is new is that the agent,
-not a human, writes the oracles, and that the agent trusts their verdicts.
+for designing oracles for coding agents. 
+
 \begin{enumerate}
   \item \textbf{State the expected output.} An oracle that waits for an error misses
         silent defects. Compare the observed behavior with an expected value.
@@ -570,10 +594,12 @@ agents for about a week in a planner, worker and judge hierarchy to build FastRe
 web browser of over a million lines~\cite{lin2026scaling}. Huntley ran Claude in a loop
 with a single prompt for three months and obtained \emph{cursed}, a programming language
 with an LLVM back end~\cite{huntley2025cursed}. Stenström built JustHTML, an HTML5 parser
-that passes the 9{,}200 tests of html5lib-tests, and states the lesson this paper also
-draws: \todo{don't quote in related work}\emph{``you need a way for them to understand their own progress. A complete test
-suite is perfect for that''}~\cite{stenstrom2025justhtml}.
-\todo{one sentence with key difference, our key novelty}
+that passes the 9{,}200 tests of html5lib-tests, and reports the lesson this paper also
+draws: a complete test suite is what lets the agent measure its own
+progress~\cite{stenstrom2025justhtml}. All three systems are turned into running code by
+tools written by humans, such as LLVM for \emph{cursed} and the Python interpreter for
+JustHTML; \sysname{} is the only one in which the agent also wrote, and bootstrapped, the
+tools that build it.
 
 Closest in domain, Suiche
 reports that Claude Fable 5 wrote the core of \texttt{ntoskrnl-rs}, an NT-style x86-64
@@ -606,7 +632,12 @@ point. The human set goals and said ``go''. The OS was the easy part. Most of th
 and most of the defects went into the toolchain, and most defects were found by booting
 the machine.
 
-\todo{recall what general knowledge we got from this experiment}
+Beyond the system, the experiment teaches how such a system gets built. The agent was as
+good as its oracles. Most of its defects were silent, so the oracles had to compare
+against expected output, and the strongest oracle was the whole system booting. The
+oracles, written by the agent, had defects of their own, which calls for explicit rules
+of oracle design. And half of the defects left no trace in the commit history: to audit
+what an agent did, one needs its transcript.
 
 \appendix
 
