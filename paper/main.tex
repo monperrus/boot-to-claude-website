@@ -244,7 +244,7 @@ machine \sysname{} runs on, not part of what builds it.
 
 \input{gen/tab-size}
 
-\section{Tiny Monsters: A Game Made for an AI Player}\label{sec:game}
+\subsection{Tiny Monsters: A Game Made for an AI Player}\label{sec:game}
 
 % design and implementation
 Now that we have a working operating system,  we implement and play with a Pokemon like game.
@@ -380,68 +380,13 @@ and the human moved on to the game instead.
 
 \input{gen/tab-questions}
 
-\section{Correctness and Oracles}\label{sec:defects}
-
-A coding agent is as strong as the oracles it uses. The agent proposes a change, the oracle
-judges it, and the agent iterates until the oracle agrees. The outcome uality depends on the oracle: a weak one lets defects through, a missing
-one leaves the agent guessing.
-Oracles
-serve twice in the loop: they reveal a defect, and they confirm its fix.
-
-\sysname{} had strong oracles, listed in
-Table~\ref{tab:oracles}, and the agent consulted them constantly: it ran the four
-scripted ones \noraclesruns{} times, and \noraclesfailed{} of those runs failed. 
-\href{\siteurl/oracles.html}{Every run} is listed on the verification site with the
-defects it revealed and the fixes it confirmed, and every defect links back to the oracle
-that found it: \ntfirstinrun{} of the \ntdefects{} defects were first seen in a scripted
-oracle run, and \ntconfirmedinrun{} fixes were confirmed by one.
-
-\input{gen/tab-oracles}
-
-\paragraph{Single observation channel.} Every oracle that runs the OS can only read
-the serial console. The kernel writes every line of output twice, to the VGA screen and
-to the COM1 serial port. Even a crash is written: the CPU exception handlers print the
-number of the faulting exception to the serial port before halting the machine. The
-oracles run QEMU without a display and save everything the serial port receives to a
-file, which the agent reads. With this design, a crash, a hang and a wrong answer all are
-text the agent can read. The agent built this channel in phase 0, before there was
-anything to test, and kept it for six days.
-
-\paragraph{Binary verdicts.} Each scripted oracle ends with one line, \texttt{PASS} or
-\texttt{FAIL}. There is nothing to interpret. When a
-run produces neither, because the machine hung until the timeout, the tool under test
-crashed, or the build broke first, the absence of \texttt{PASS} is itself the failure.
-
-\paragraph{End to end.} The OS system test boots the boot loader and kernel built by
-the toolchain under test, and drives them as a user would. Any defect anywhere on that
-path, in the assembler's encoding, the compiler's code generator or the linker's
-relocations, shows up as a wrong line on the serial console. This is what made the
-toolchain safe to replace: the OS itself is the largest test program the toolchain can use for correctness testing.
-
-\paragraph{Fast and slow oracles.} The toolchain tests run \ntoolchainfixtures{} small programs on
-the host in seconds; the OS test boots a machine. The agent ran them
-\ntoolchaintestruns{} and \nostestruns{} times respectively, iterating on the fast oracle
-and confirming on the slow one.
-
-\paragraph{References while they exist, a fixed point afterwards.} During the transition
-the old tools were still available, and the agent used them as a differential oracle.
-The kernel was first rewritten into the tinyC dialect while still building with
-\texttt{gcc}, so the OS test could confirm each rewrite before the new compiler was in
-the loop. The linker's flat output was compared byte for byte with \texttt{objcopy}'s.
-Once the old tools were gone, Equation~\eqref{eq:fixpoint} took over: the bootstrap
-checks the toolchain against itself and needs no reference at all.
-
-\paragraph{Regression tests.} Switching the build over to the new toolchain (phase T7)
-is where the oracles mattered most: \ntsevenfailed{} of the \noraclesfailed{} failing oracle
-runs of the whole session happened in that phase alone. When such a failure exposed a
-defect, the agent added a regression test for its class.
-
 \section{Defects}\label{sec:defectlist}
 
-Section~\ref{sec:defects} described the oracles; this section describes what defects they identified.
-This matters for agent auditability
-to anyone who reviews such a system: if a defect leaves no trace in the history, a reviewer
-who reads only the commits cannot see what the agent got wrong.
+This section describes the defects the agent made and how they came to light;
+Section~\ref{sec:oracles} then describes the oracles that revealed them. The defects matter
+for the auditability of an agent, to anyone who reviews such a system: if a defect leaves
+no trace in the history, a reviewer who reads only the commits cannot see what the agent
+got wrong.
 
 \subsection{Method.} Commit messages report the defects the agent chose to mention. To
 see all of them, we cut the transcript into ten chunks at phase boundaries and had ten
@@ -583,7 +528,61 @@ not a human, writes the oracles, and that the agent trusts their verdicts.
         symptom as a broken system.
 \end{enumerate}
 
+\section{Correctness and Oracles}\label{sec:oracles}
 
+A coding agent is as strong as the oracles it uses. The agent proposes a change, the oracle
+judges it, and the agent iterates until the oracle agrees. The outcome uality depends on the oracle: a weak one lets defects through, a missing
+one leaves the agent guessing.
+Oracles
+serve twice in the loop: they reveal a defect, and they confirm its fix.
+
+\sysname{} had strong oracles, listed in
+Table~\ref{tab:oracles}, and the agent consulted them constantly: it ran the four
+scripted ones \noraclesruns{} times, and \noraclesfailed{} of those runs failed. 
+\href{\siteurl/oracles.html}{Every run} is listed on the verification site with the
+defects it revealed and the fixes it confirmed, and every defect links back to the oracle
+that found it: \ntfirstinrun{} of the \ntdefects{} defects were first seen in a scripted
+oracle run, and \ntconfirmedinrun{} fixes were confirmed by one.
+
+\input{gen/tab-oracles}
+
+\paragraph{Single observation channel.} Every oracle that runs the OS can only read
+the serial console. The kernel writes every line of output twice, to the VGA screen and
+to the COM1 serial port. Even a crash is written: the CPU exception handlers print the
+number of the faulting exception to the serial port before halting the machine. The
+oracles run QEMU without a display and save everything the serial port receives to a
+file, which the agent reads. With this design, a crash, a hang and a wrong answer all are
+text the agent can read. The agent built this channel in phase 0, before there was
+anything to test, and kept it for six days.
+
+\paragraph{Binary verdicts.} Each scripted oracle ends with one line, \texttt{PASS} or
+\texttt{FAIL}. There is nothing to interpret. When a
+run produces neither, because the machine hung until the timeout, the tool under test
+crashed, or the build broke first, the absence of \texttt{PASS} is itself the failure.
+
+\paragraph{End to end.} The OS system test boots the boot loader and kernel built by
+the toolchain under test, and drives them as a user would. Any defect anywhere on that
+path, in the assembler's encoding, the compiler's code generator or the linker's
+relocations, shows up as a wrong line on the serial console. This is what made the
+toolchain safe to replace: the OS itself is the largest test program the toolchain can use for correctness testing.
+
+\paragraph{Fast and slow oracles.} The toolchain tests run \ntoolchainfixtures{} small programs on
+the host in seconds; the OS test boots a machine. The agent ran them
+\ntoolchaintestruns{} and \nostestruns{} times respectively, iterating on the fast oracle
+and confirming on the slow one.
+
+\paragraph{References while they exist, a fixed point afterwards.} During the transition
+the old tools were still available, and the agent used them as a differential oracle.
+The kernel was first rewritten into the tinyC dialect while still building with
+\texttt{gcc}, so the OS test could confirm each rewrite before the new compiler was in
+the loop. The linker's flat output was compared byte for byte with \texttt{objcopy}'s.
+Once the old tools were gone, Equation~\eqref{eq:fixpoint} took over: the bootstrap
+checks the toolchain against itself and needs no reference at all.
+
+\paragraph{Regression tests.} Switching the build over to the new toolchain (phase T7)
+is where the oracles mattered most: \ntsevenfailed{} of the \noraclesfailed{} failing oracle
+runs of the whole session happened in that phase alone. When such a failure exposed a
+defect, the agent added a regression test for its class.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -643,7 +642,7 @@ resolution in existing repositories. Commit0~\cite{zhao2025commit0} asks agents 
 implement 54 Python libraries from a specification and unit tests. ProjectEval~\cite{liu2025projecteval}
 and ProjDevBench~\cite{lu2026projdevbench} evaluate whole projects generated from natural
 language requirements. In all of them the oracle is given to the agent. In \sysname{} the
-agent wrote its oracles too, as it would be done in the real world (Section~\ref{sec:defects}).
+agent wrote its oracles too, as it would be done in the real world (Section~\ref{sec:oracles}).
 
 \paragraph{Agents that play games.} In Claude Plays Pokémon, Claude plays Pokémon Red
 through an emulator, reading the screen and pressing buttons~\cite{techcrunch2025pokemon}.
