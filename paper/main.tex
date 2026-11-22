@@ -41,15 +41,14 @@
 We report on \sysname{}, an x86 operating system in which every line of code, from the
 boot sector to the compiler that builds it, was written by Claude working as a coding
 agent. \sysname{} boots in QEMU through its own two-stage boot loader into a 32-bit
-kernel with a disk driver, a file system, a shell, a scripting language, and a compiler
-to an in-kernel bytecode VM. Its build uses no third-party compiler, assembler or linker:
+kernel with a disk driver, a file system, a shell, a scripting language, and a compiler. Its build uses no third-party compiler, assembler or linker:
 the agent wrote its own, and bootstrapped them until the second and third self-compiled
-generations were byte-identical. The human set the goals and wrote no code. From plan
-approval to a working OS with both languages took \plantoosmin{} minutes. The toolchain
-took \tcactivehours{} hours of agent activity and accounts for \nttoolchain{} of the
-\ntproduct{} defects that the transcript shows the agent finding and fixing, half of
-which no commit message mentions. The screencasts, the full transcript and every defect
-are browsable at \url{\siteurl}.
+generations were byte-identical. The human operator set the goals and wrote no code. 
+What made this possible is the oracles. The agent combined expected-output, differential
+and fixed-point oracles and ran them \noraclesruns{} times; \ntsilent{} of the \ntproduct{}
+defects in the system raised no error at all, and only a test booting the whole machine caught
+the subtlest ones. We distill guidelines for designing oracles for coding agents. The full
+transcripts are browsable at \url{\siteurl}.
 \end{abstract}
 
 % Teaser: [H] keeps it on page 1, right under the abstract.
@@ -81,8 +80,8 @@ resets the machine, and an I/O instruction with the wrong operand size corrupts 
 without a word. Unix~\cite{ritchie1974unix} and xv6~\cite{cox2006xv6} show how much a
 small kernel can do; they also took skilled people to write.
 
-% [H] at this point of the introduction puts it on page 2; check after edits to page 1.
-\begin{table}[H]
+% [t] here, in text set on page 2, puts it at the top of page 2; check after edits to page 1.
+\begin{table}[t]
 \centering
 \caption{The goal: every part of the system and of its build, who may write or build it, and the
 claim it supports. The two parts below the line are the only ones not written by the agent.}
@@ -481,7 +480,7 @@ It never fixed the cause: it worked around it by running \texttt{pkill} and the 
 separate tool calls.
 
 
-% The section starts a page and Table~\ref{tab:oracles} ([H]) sits right under its header.
+% The section starts a page; Table~\ref{tab:oracles} ([t]) sits at the top of that page.
 \clearpage
 \section{Oracles for Coding Agents}\label{sec:oracles}
 

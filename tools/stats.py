@@ -445,7 +445,8 @@ def num(n: int) -> str:
 
 
 def booktabs(tex: str) -> str:
-    """NeurIPS table style: booktabs rules instead of \\hline, caption above the table, scaled
+    """NeurIPS table style (tables are written as [t] floats, at the top of a page): booktabs
+    rules instead of \\hline, caption above the table, scaled
     down to the text width when wider (adjustbox)."""
     tex = re.sub(r"(\\begin\{tabular\}\{[^\n]*\}\n)", lambda m: m.group(1) + "\\toprule\n", tex, count=1)
     tex = tex.replace("\\hline", "\\midrule").replace("\\end{tabular}", "\\bottomrule\n\\end{tabular}\n\\end{adjustbox}")
@@ -497,7 +498,7 @@ def defect_table(ds: list[dict]) -> str:
              row("Oracle tooling", [d for d in ds if d["kind"] == "oracle"], "#oracle"),
              row("Environment", [d for d in ds if d["kind"] == "environment"], "#environment")]
     cols = " & ".join(c for c, _ in REVEALED_COLS)
-    return head + booktabs("\\begin{table}[h]\n\\centering\n\\begin{tabular}{lrrrrrrrr}\n"
+    return head + booktabs("\\begin{table}[t]\n\\centering\n\\begin{tabular}{lrrrrrrrr}\n"
             f"Component & Defects & In commit msg. & {cols} \\\\\n\\hline\n" + "\n".join(rows) +
             "\n\\end{tabular}\n\\caption{Defects recovered from the full transcript, by component and by "
             "what revealed them. \\emph{In commit msg.} counts those that a commit message also reports. "
@@ -564,7 +565,7 @@ def write(st: dict) -> None:
     rows.append("\\hline")
     rows.append(f"after last commit & {site('t/after.html', 'screencasts, hosting')} & ---& --- & {len(a.prompts)} & "
                 f"{mins(a.active())} & {kilo(a.output_tokens)} & {a.tool_calls} \\\\")
-    (GEN / "tab-phases.tex").write_text(head + booktabs("\\begin{table}[h]\n\\centering\n"
+    (GEN / "tab-phases.tex").write_text(head + booktabs("\\begin{table}[t]\n\\centering\n"
         "\\begin{tabular}{llrrrrrr}\n"
         "Commit (CEST) & Phase & Files & Lines added & Prompts & Active min & Output ktok & Tool calls \\\\\n"
         "\\hline\n" + "\n".join(rows) + "\n\\end{tabular}\n"
@@ -577,7 +578,7 @@ def write(st: dict) -> None:
     size_rows = []
     for label, prefix, indent in SIZE_ROWS:
         size_rows.append(f"{'\\quad ' if indent else ''}{label} & {st['loc'].get(prefix, 0)} \\\\")
-    (GEN / "tab-size.tex").write_text(head + booktabs("\\begin{table}[h]\n\\centering\n\\begin{tabular}{lr}\n"
+    (GEN / "tab-size.tex").write_text(head + booktabs("\\begin{table}[t]\n\\centering\n\\begin{tabular}{lr}\n"
         "Component & Lines \\\\\n\\hline\n" + "\n".join(size_rows) + "\n\\end{tabular}\n"
         f"\\caption{{Size of \\texttt{{boot-to-claude}} at commit \\texttt{{{OS_REPO[1][:7]}}}, "
         "in physical lines including comments.}\n\\label{tab:size}\n\\end{table}\n"))
@@ -593,7 +594,7 @@ def write(st: dict) -> None:
         if len(one) > 300:
             one = one[:297] + "..."
         prow.append(f"{site('t/' + anchor, t.astimezone(CEST).strftime('%b %d, %H:%M'))} & {tex_escape(one)} \\\\")
-    (GEN / "tab-prompts.tex").write_text(head + booktabs("\\begin{table}[h]\n\\begin{tabular}{lp{11cm}}\n"
+    (GEN / "tab-prompts.tex").write_text(head + booktabs("\\begin{table}[t]\n\\begin{tabular}{lp{11cm}}\n"
         "Time (CEST) & Prompt \\\\\n\\hline\n" + "\n".join(prow) + "\n\\end{tabular}\n"
         f"\\caption{{The human prompts of the session, verbatim, up to the request to play the "
         f"game. The {omitted} later prompts are about recording and hosting screencasts and "
@@ -607,7 +608,7 @@ def write(st: dict) -> None:
         if q["answer"] and q["answer"] not in q["options"]:
             ans += " \\emph{(free text)}"
         qrows.append(f"{when} & {tex_escape(' '.join(q['question'].split()))} & {ans} \\\\")
-    (GEN / "tab-questions.tex").write_text(head + booktabs("\\begin{table}[h]\n\\begin{tabular}{lp{7cm}p{5cm}}\n"
+    (GEN / "tab-questions.tex").write_text(head + booktabs("\\begin{table}[t]\n\\begin{tabular}{lp{7cm}p{5cm}}\n"
         "Time (CEST) & Question of the agent, verbatim & Answer of the human \\\\\n\\hline\n"
         + "\n".join(qrows) + "\n\\end{tabular}\n"
         "\\caption{The multiple-choice questions the agent asked the human. Each question offered two "
@@ -645,8 +646,7 @@ def write(st: dict) -> None:
         ("Screenshots", "the graphical battle screen, from QEMU frame-buffer dumps",
          "the agent looks at the image", f"\\multicolumn{{3}}{{c}}{{{st['image_reads']} images read}}"),
     ]
-    # [H] (float package): main.tex places it right under the Oracles section header.
-    (GEN / "tab-oracles.tex").write_text(head + booktabs("\\begin{table}[H]\n\\begin{tabular}{p{2.6cm}p{6cm}p{3cm}rrr}\n"
+    (GEN / "tab-oracles.tex").write_text(head + booktabs("\\begin{table}[t]\n\\begin{tabular}{p{2.6cm}p{6cm}p{3cm}rrr}\n"
         "Oracle & What it checks & Verdict & Runs & Failed & No verdict \\\\\n\\hline\n"
         + "\n".join(" & ".join(r) + " \\\\" for r in orows) + "\n\\end{tabular}\n"
         "\\caption{The oracles of \\sysname{}. \\emph{Runs} counts the times the agent executed the "
