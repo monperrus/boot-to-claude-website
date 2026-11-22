@@ -109,21 +109,22 @@ week~\cite{lin2026scaling}. A month before this work, Claude Fable 5 wrote the c
 NT-style kernel in Rust, with a scheduler and a memory manager, that boots in
 QEMU~\cite{suiche2026ntoskrnl}. All of them are compiled by existing, human-written
 compilers (GCC, \texttt{rustc}), so every instruction that runs was chosen by a code
-generator no agent wrote. To the best of our knowledge, no one has reported a
+generator no agent wrote.
+
+To the best of our knowledge, no one has reported a
 bootstrapped operating system written by an AI: one where the AI wrote not only the OS
 but also the assembler, compiler and linker that build it, where that toolchain compiles
 itself to a byte-identical fixed point, and where it is the only toolchain that ever
-compiles the OS. \sysname{} is such a system.
+compiles the OS. This is the contribution of this paper: \sysname{} is a bootstrapped operating system entirely written by AI.
 
-\paragraph{Methodology.} One human gave one Claude Code agent (\sessionmodel{}) a goal
+\paragraph{Methodology.} The human author gave one Claude Code agent (\sessionmodel{}) a goal
 and an empty repository, and let it work in a single session. The human set goals,
 answered the agent's questions and said ``go'', but wrote no code. We study two
 artifacts: the git history of the
 system\footnote{\url{https://github.com/monperrus/boot-to-claude}, commit \ospin{}.} and
 the complete transcript of the
 session,\footnote{\url{https://github.com/monperrus/boot-to-claude-paper}} with every
-prompt, model response, tool call and tool output. Every number in this paper is computed from these two sources by a script,
-including how often the agent ran each oracle and how often the oracle said no.
+prompt, model response, tool call and tool output. Every number in this paper is computed from these two reference sources.
 
 \paragraph{Results.} \sysname{} boots through its own boot loader into a kernel with a
 file system, a shell, a scripting language and a compiler to bytecode. Its assembler, C
@@ -136,7 +137,7 @@ defects found and fixed in the system, \nttoolchain{} of them in the toolchain; 
 \ntreported{} appear in a commit message.
 
 \paragraph{What we learned.} Beyond this one build, the experiment yields knowledge that
-carries over to other agents and other systems:
+carries over to agentic work in general:
 \begin{itemize}
   \item \textbf{An agent is as good as its oracles.} The agent worked in a loop: change
         the code, run an oracle, iterate until it passes. A defect that its oracle could not
@@ -162,25 +163,19 @@ carries over to other agents and other systems:
         two languages, and its own assembler, C compiler and linker, which compile
         themselves to a byte-identical fixed point and are the only tools that build the
         OS. No line of the stack was written by a human.
-  \item \textbf{One agent, one session, no human code.} Where comparable systems used
-        teams of 16 to hundreds of agents~\cite{carlini2026ccc,lin2026scaling}, a single
-        agent wrote \sysname{}. The OS with both languages took \plantoosmin{} minutes
-        from plan approval; the full toolchain, \tcactivehours{} hours of agent activity.
-  \item \textbf{The oracle, not the code, is what makes it possible.} We show from the
+
+  \item \textbf{The oracle is what makes it possible.} We show from the
         transcript that the agent was only as good as its oracles: it ran them
         \noraclesruns{} times, they rejected its work \noraclesfailed{} times, and the
         most telling defects were silent ones that only an oracle booting the whole
         machine caught.
   \item \textbf{A fully transparent open-science package.} We release the system's
         source and history, the complete transcript of the session that built it, with
-        every prompt, model response, tool call and tool output, and the scripts that
-        recompute every number, table and figure in this paper from them. Anyone can
-        check every claim we make, down to the individual tool call: the phases,
-        prompts, oracle runs and defects in this paper are hyperlinks into the rendered
-        transcript.\footnote{\url{\siteurl}}
-  \item \textbf{A game written by an AI, for an AI}, on a stack written by an AI from the
-        boot sector up.
+        every prompt, model response, tool call and tool output. Anyone can
+        check the results down to the individual tool call.\footnote{\url{\siteurl}}
+  \item \textbf{A game written by an AI, played by an AI}, on a stack written by an AI from the boot sector up.
 \end{itemize}
+
 
 \section{Goal}\label{sec:goal}
 
@@ -686,6 +681,32 @@ against expected output, and the strongest oracle was the whole system booting. 
 oracles, written by the agent, had defects of their own, which calls for explicit rules
 of oracle design. And half of the defects left no trace in the commit history: to audit
 what an agent did, one needs its transcript.
+
+\section{Final Reflection: Built on Human Code}\label{sec:reflection}
+
+Every line of \sysname{} was written by an AI, yet the system is founded on human code,
+and will remain so. In two ways.
+
+\paragraph{The model learned from human code.} Claude could write a boot sector, a file
+system and a C compiler because it was trained on decades of code that people wrote,
+documented and shared: operating systems, compilers, assemblers, textbooks, manuals and
+answers to questions. The agent wrote no line it copied, but it wrote none it could have
+written without that body of human work.
+
+\paragraph{The bootstrap starts from a human compiler.} The toolchain compiles itself, but
+its very first binary, Stage~1, was produced by \texttt{gcc}, the host C compiler, a
+program written by people over decades. The fixed point of Equation~\eqref{eq:fixpoint}
+shows that the bytes of Stage~2 no longer depend on \texttt{gcc}'s code generator; it does
+not erase where they came from. As Thompson observed, a self-hosted toolchain carries its
+first generation with it~\cite{thompson1984trusting}. And underneath both lie human
+designs that the agent took as given: the x86 instruction set, the BIOS boot protocol, the
+ELF format, the C language.
+
+An AI-written system is therefore not a break from human computing but its continuation.
+The collective effort of the people who wrote, published and maintained the code the
+models learned from, and the compilers every bootstrap starts from, is an essential and
+lasting contribution of humanity to computing, including to the computing that AI now
+does.
 
 \bibliographystyle{abbrvnat}
 \bibliography{refs}
