@@ -45,7 +45,7 @@ pre{background:var(--box);padding:8px 10px;overflow-x:auto;white-space:pre-wrap;
 .ev{border-top:1px solid var(--line);padding:6px 0}.ev:target{outline:2px solid var(--acc);outline-offset:2px}
 .meta{color:var(--mut);font-size:12px}.hum{background:var(--hum);padding:6px 10px}.say{white-space:pre-wrap}
 .err pre{background:var(--err)} img,video{max-width:100%;image-rendering:pixelated}
-figure{margin:1em 0}figcaption{color:var(--mut);font-size:14px}
+
 table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top;font-size:13.5px}
 tr:target{outline:2px solid var(--acc)}
 """
@@ -301,13 +301,12 @@ def index_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> s
             f"(pinned at <code>{TRAJ_REPO[1][:7]}</code>); the OS is <a href=\"https://github.com/{OS_REPO[0]}\">"
             f"{OS_REPO[0]}</a> at <code>{OS_REPO[1][:7]}</code>. Each page holds the work that ends at one "
             "phase commit; every tool call is anchored by its id.</p>"
-            '<figure><img src="media/battle.png" alt="Tiny Monsters battle screen on QuineOS">'
-            f"<figcaption>{figure_caption('fig:battle')}</figcaption></figure>"
             '<h2 id="screencasts">Screencasts</h2>'
             "<p>Both recorded by the agent itself, on QuineOS running in QEMU.</p>"
             "<h3>Graphical battle screen</h3>"
             '<video controls preload="metadata" poster="media/battle.png" src="media/tiny-monsters-gui.mp4"></video>'
-            "<p class=\"meta\">Driven by emulated keystrokes, frames captured from QEMU's frame buffer.</p>"
+            f"<p class=\"meta\">{figure_caption('fig:battle')} Driven by emulated keystrokes, frames captured "
+            "from QEMU's frame buffer.</p>"
             "<h3>Five minutes played over the serial port</h3>"
             '<video controls preload="metadata" src="media/tiny-monsters-serial.mp4"></video>'
             "<p class=\"meta\">The agent's player script, connected to the serial port, no keyboard; "
