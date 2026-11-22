@@ -35,16 +35,6 @@
 \begin{document}
 \maketitle
 
-% Teaser: [H] keeps it on page 1, between the title block and the abstract.
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{fig/battle.png}
-\caption{\emph{Tiny Monsters} on \sysname{} in QEMU, from the agent's own
-\href{\siteurl/index.html\#screencasts}{screencast}. Every pixel comes from code written by
-Claude: the game, the VGA driver, the kernel, the boot loader, and the assembler, C compiler
-and linker that built them. There is no image file in the system.}
-\label{fig:battle}
-\end{figure}
 
 
 \begin{abstract}
@@ -61,6 +51,17 @@ took \tcactivehours{} hours of agent activity and accounts for \nttoolchain{} of
 which no commit message mentions. The screencasts, the full transcript and every defect
 are browsable at \url{\siteurl}.
 \end{abstract}
+
+% Teaser: [H] keeps it on page 1, right under the abstract.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{fig/battle.png}
+\caption{\emph{Tiny Monsters} on \sysname{} in QEMU, from the agent's own
+\href{\siteurl/index.html\#screencasts}{screencast}. Every pixel comes from code written by
+Claude: the game, the VGA driver, the kernel, the boot loader, and the assembler, C compiler
+and linker that built them. There is no image file in the system.}
+\label{fig:battle}
+\end{figure}
 
 \section{Introduction}\label{sec:intro}
 
@@ -79,6 +80,32 @@ Below the kernel there is no runtime to report a mistake: a wrong descriptor tab
 resets the machine, and an I/O instruction with the wrong operand size corrupts the disk
 without a word. Unix~\cite{ritchie1974unix} and xv6~\cite{cox2006xv6} show how much a
 small kernel can do; they also took skilled people to write.
+
+% [H] at this point of the introduction puts it on page 2; check after edits to page 1.
+\begin{table}[H]
+\centering
+\caption{The goal: every part of the system and of its build, who may write or build it, and the
+claim it supports. The two parts below the line are the only ones not written by the agent.}
+\label{tab:goal}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lll}
+\toprule
+Part & Written or built by & Claim \\
+\midrule
+Boot loader: boot sector, second stage & the agent & AI-written kernel \\
+Kernel: memory, drivers, CPU exceptions & the agent & AI-written kernel \\
+File system and shell & the agent & AI-written kernel \\
+Scripting language, compiled language & the agent & AI-written kernel \\
+Assembler, C compiler, linker & the agent & AI-written stack \\
+Build of the OS & the agent's toolchain only & Full bootstrap \\
+Build of the toolchain & the agent's toolchain, to a fixed point & Full bootstrap \\
+\midrule
+First binary of the toolchain & the host C compiler, once & allowed exception \\
+The machine & QEMU & outside the system \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
 
 There are precedents for agents building large systems from nothing. A team of 16 Claude
 agents wrote a C compiler that builds Linux, but it relies on GCC's assembler and
@@ -206,30 +233,6 @@ languages of its own. Concretely, a boot loader, a kernel, a file system, an int
 shell, an interpreted scripting language, and a compiled language. Then the tools that build all of it: an assembler, a C compiler and a linker.
 Table~\ref{tab:goal} sums up what is required of each part.
 
-\begin{table}[h]
-\centering
-\caption{The goal: every part of the system and of its build, who may write or build it, and the
-claim it supports. The two parts below the line are the only ones not written by the agent.}
-\label{tab:goal}
-\begin{adjustbox}{max width=\linewidth}
-\begin{tabular}{lll}
-\toprule
-Part & Written or built by & Claim \\
-\midrule
-Boot loader: boot sector, second stage & the agent & AI-written kernel \\
-Kernel: memory, drivers, CPU exceptions & the agent & AI-written kernel \\
-File system and shell & the agent & AI-written kernel \\
-Scripting language, compiled language & the agent & AI-written kernel \\
-Assembler, C compiler, linker & the agent & AI-written stack \\
-Build of the OS & the agent's toolchain only & Full bootstrap \\
-Build of the toolchain & the agent's toolchain, to a fixed point & Full bootstrap \\
-\midrule
-First binary of the toolchain & the host C compiler, once & allowed exception \\
-The machine & QEMU & outside the system \\
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-\end{table}
 
 \section{\sysname}\label{sec:system}
 
