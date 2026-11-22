@@ -27,6 +27,8 @@ from stats import (CEST, DATA, MAIN_SESSION, OS_REPO, PHASES, ROOT, SITE, TRAJ_R
                    fetch, human_text, oracle_runs, phase_page, row_anchor, ts)
 
 OUT = ROOT / "build" / "site"
+MEDIA = ROOT / "media"  # the screencasts the agent recorded, copied from monperrus.net
+POSTER = ROOT / "paper" / "fig" / "battle.png"
 PAPER = ROOT / "build" / "paper.html"
 GITHUB = f"https://github.com/{OS_REPO[0]}/commit/"
 TRAJ_URL = f"https://github.com/{TRAJ_REPO[0]}/blob/{TRAJ_REPO[1]}/{MAIN_SESSION}"
@@ -41,7 +43,7 @@ a{color:var(--acc)} h1{font-size:1.5em} nav{margin:.5em 0 1.5em;color:var(--mut)
 pre{background:var(--box);padding:8px 10px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;font:12.5px/1.4 ui-monospace,monospace;margin:4px 0}
 .ev{border-top:1px solid var(--line);padding:6px 0}.ev:target{outline:2px solid var(--acc);outline-offset:2px}
 .meta{color:var(--mut);font-size:12px}.hum{background:var(--hum);padding:6px 10px}.say{white-space:pre-wrap}
-.err pre{background:var(--err)} img{max-width:100%;image-rendering:pixelated}
+.err pre{background:var(--err)} img,video{max-width:100%;image-rendering:pixelated}
 table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top;font-size:13.5px}
 tr:target{outline:2px solid var(--acc)}
 """
@@ -275,8 +277,17 @@ def index_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> s
             f"The transcript is the complete Claude Code session <a href=\"{TRAJ_URL}\">{MAIN_SESSION}</a> "
             f"(pinned at <code>{TRAJ_REPO[1][:7]}</code>); the OS is <a href=\"https://github.com/{OS_REPO[0]}\">"
             f"{OS_REPO[0]}</a> at <code>{OS_REPO[1][:7]}</code>. Each page holds the work that ends at one "
-            "phase commit; every tool call is anchored by its id.</p><h2>Transcript by phase</h2><ol>"
-            + "".join(items) + "</ol>")
+            "phase commit; every tool call is anchored by its id.</p>"
+            '<h2 id="screencasts">Screencasts</h2>'
+            "<p>Both recorded by the agent itself, on QuineOS running in QEMU.</p>"
+            "<h3>Graphical battle screen</h3>"
+            '<video controls preload="metadata" poster="media/battle.png" src="media/tiny-monsters-gui.mp4"></video>'
+            "<p class=\"meta\">Driven by emulated keystrokes, frames captured from QEMU's frame buffer.</p>"
+            "<h3>Five minutes played over the serial port</h3>"
+            '<video controls preload="metadata" src="media/tiny-monsters-serial.mp4"></video>'
+            "<p class=\"meta\">The agent's player script, connected to the serial port, no keyboard; "
+            "it picks moves at random and restarts after each faint.</p>"
+            "<h2>Transcript by phase</h2><ol>" + "".join(items) + "</ol>")
 
 
 def build() -> None:
@@ -292,6 +303,8 @@ def build() -> None:
     (OUT / "t").mkdir(parents=True)
     (OUT / "img").mkdir()
     (OUT / "out").mkdir()
+    shutil.copytree(MEDIA, OUT / "media")
+    shutil.copy(POSTER, OUT / "media" / "battle.png")
     (OUT / "site.css").write_text(CSS)
     titles = {c.sha: re.sub(r"\\texttt\{(.*?)\}", r"\1", PHASES[c.sha]) for c in bounds} | {"after": "after the last commit"}
     for pg, body in bodies.items():
@@ -310,7 +323,8 @@ def build() -> None:
 # ---- link checker ---------------------------------------------------------------
 
 def broken_links(pages: dict[str, str]) -> list[str]:
-    """Links between site pages (relative, or absolute under SITE) to a missing page or anchor.
+    """Links between site pages (relative, or absolute under SITE) to a missing page or anchor;
+    `src` and `poster` (images, videos) count as links.
 
     `pages` maps a site path (e.g. "t/42f0af3.html") or "<paper>" to its HTML.
     """
@@ -318,7 +332,7 @@ def broken_links(pages: dict[str, str]) -> list[str]:
     bad = [f"{p}: duplicate ids" for p, h in pages.items() if len(re.findall(r'\bid="', h)) != len(ids[p])]
     for src, h in pages.items():
         base = "" if src == "<paper>" or "/" not in src else src.rsplit("/", 1)[0] + "/"
-        for href in re.findall(r'\bhref="([^"]+)"', h):
+        for href in re.findall(r'\b(?:href|src|poster)="([^"]+)"', h):
             href = html.unescape(href)
             if href.startswith(SITE + "/"):
                 target = href[len(SITE) + 1:]
@@ -334,7 +348,7 @@ def broken_links(pages: dict[str, str]) -> list[str]:
                 elif seg not in ("", "."):
                     parts.append(seg)
             path = "/".join(parts) or "index.html"
-            if path.endswith((".png", ".jpeg", ".txt", ".css")):
+            if not path.endswith(".html"):
                 exists = (OUT / path).exists()
             else:
                 exists = path in pages and (not frag or frag in ids[path])

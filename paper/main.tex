@@ -25,11 +25,27 @@
 % \defect{D-C04-12}{text}: link text to the defect's record on the verification site.
 \newcommand{\defect}[2]{\href{\siteurl/defects.html\##1}{#2}}
 
-\title{Booting a Bootstrapped Operating System Entirely Written by AI}
-\author{Martin Monperrus}
+\title{Boot-to-Claude: Bootstrapped Operating System Entirely Written by AI}
+\author{%
+  Martin Monperrus\\
+  KTH Royal Institute of Technology\\
+  \texttt{monperrus@kth.se}
+}
 
 \begin{document}
 \maketitle
+
+% Teaser: [H] keeps it on page 1, between the title block and the abstract.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{fig/battle.png}
+\caption{\emph{Tiny Monsters} on \sysname{} in QEMU, from the agent's own
+\href{\siteurl/index.html\#screencasts}{screencast}. Every pixel comes from code written by
+Claude: the game, the VGA driver, the kernel, the boot loader, and the assembler, C compiler
+and linker that built them. There is no image file in the system.}
+\label{fig:battle}
+\end{figure}
+
 
 \begin{abstract}
 We report on \sysname{}, an x86 operating system in which every line of code, from the
@@ -42,7 +58,8 @@ generations were byte-identical. The human set the goals and wrote no code. From
 approval to a working OS with both languages took \plantoosmin{} minutes. The toolchain
 took \tcactivehours{} hours of agent activity and accounts for \nttoolchain{} of the
 \ntproduct{} defects that the transcript shows the agent finding and fixing, half of
-which no commit message mentions.
+which no commit message mentions. The screencasts, the full transcript and every defect
+are browsable at \url{\siteurl}.
 \end{abstract}
 
 \section{Introduction}\label{sec:intro}
@@ -283,16 +300,6 @@ stack. Every pixel in Figure~\ref{fig:battle} is drawn by code Claude wrote, com
 the compiler Claude wrote, on a kernel Claude wrote.
 
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=\textwidth]{fig/battle.png}
-\caption{Tiny Monsters running on \sysname{} in QEMU, four frames from the agent's own
-screencast. Top left: choosing a starter. Top right: a mirror match, Emberpup against a
-wild Emberpup. Bottom: Fire beats Grass; Flame Burst takes the wild Leafling down until
-it faints. Sprites, font, HP bars and dialogue box are drawn by \sysname{}'s VGA driver;
-there is no image file anywhere in the system.}
-\label{fig:battle}
-\end{figure}
 
 \paragraph{Rules.} Three species, Emberpup, Aqualing and Leafling, one per type in a
 rock-paper-scissors cycle: Fire beats Grass, Grass beats Water, Water beats Fire. A move
