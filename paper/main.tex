@@ -72,17 +72,15 @@ Coding agents are usually judged on changes to code that already works, from sin
 functions~\cite{chen2021codex} to repository-level issue fixing~\cite{jimenez2024swebench}.
 Writing a system from an empty repository is a different task. The agent has to choose
 an architecture, keep it coherent over thousands of lines, and debug failures whose only
-symptom may be a machine that prints nothing. An operating system is the extreme case.
+symptom may be subtle or silent. An operating system is the extreme case.
 Below the kernel there is no runtime to report a mistake: a wrong descriptor table entry
 resets the machine, and an I/O instruction with the wrong operand size corrupts the disk
-without a word. Unix~\cite{ritchie1974unix} and xv6~\cite{cox2006xv6} show how much a
-small kernel can do; they also took skilled people to write.
+without a word. Unix~\cite{ritchie1974unix} and xv6~\cite{cox2006xv6} took extremely skilled people to write.
 
 % [t] here, in text set on page 2, puts it at the top of page 2; check after edits to page 1.
 \begin{table}[t]
 \centering
-\caption{The goal: every part of the system and of its build, who may write or build it, and the
-claim it supports. The two parts below the line are the only ones not written by the agent.}
+\caption{Every part of \sysname{} supports a specific claim. The two parts below the line are the only ones involving code not written by the agent (to bootstrap the compiler and to emulate the hardware).}
 \label{tab:goal}
 \begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{lll}

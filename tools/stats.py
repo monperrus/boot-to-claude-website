@@ -25,7 +25,7 @@ DATA = ROOT / "data"
 GEN = ROOT / "paper" / "gen"
 
 OS_REPO = ("monperrus/boot-to-claude", "a4a64cbbb751f3498f5ab722d51df856aabcdc95")
-TRAJ_REPO = ("monperrus/boot-to-claude-paper", "cd9643e2b01f0130e0a619146b4e7309aeed1ce0")
+TRAJ_REPO = ("monperrus/boot-to-claude-paper", "55c312c54b502399f054b9263ec39ac48b547fbc")
 MAIN_SESSION = "trajectories/03468d1c-5b29-4e24-8f0d-2a7435d227ab.jsonl"
 
 # A gap between two consecutive transcript events longer than this is idle time
