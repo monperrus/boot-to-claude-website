@@ -1,4 +1,5 @@
-"""Render the verification site: the full session transcript, the defects, the oracle runs.
+"""Render the verification site: the Tiny Monsters screencasts (index.html), the full session
+transcript by phase (phases.html), the defects, the oracle runs.
 
 The paper links into this site (`\\siteurl` in paper/gen/stats.tex). Every tool call has
 an anchor equal to its tool id, every transcript message an anchor `r-<uuid>`.
@@ -60,7 +61,8 @@ def page(title: str, body: str, depth: int = 0) -> str:
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>'
             f'<link rel="stylesheet" href="{up}site.css"></head><body>'
-            f'<nav><a href="{up}index.html">Phases</a> · <a href="{up}defects.html">Defects</a> · '
+            f'<nav><a href="{up}index.html">Tiny Monsters</a> · <a href="{up}phases.html">Phases</a> · '
+            f'<a href="{up}defects.html">Defects</a> · '
             f'<a href="{up}oracles.html">Oracle runs</a></nav>'
             f"<h1>{esc(title)}</h1>\n{body}\n</body></html>\n")
 
@@ -290,7 +292,24 @@ def figure_caption(label: str) -> str:
     return cap
 
 
-def index_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> str:
+def monsters_page() -> str:
+    """The default page: the game the agent wrote and played, as screencasts."""
+    return (
+        "<p>Tiny Monsters is the game the agent wrote last, on QuineOS, an operating system written by "
+        'an AI; the <a href="phases.html">phases</a> hold the full transcript of how all of it was built.</p>'
+        '<h2 id="screencasts">Screencasts</h2>'
+        "<p>Both recorded by the agent itself, on QuineOS running in QEMU.</p>"
+        "<h3>Graphical battle screen</h3>"
+        '<video controls preload="metadata" poster="media/battle.png" src="media/tiny-monsters-gui.mp4"></video>'
+        f"<p class=\"meta\">{figure_caption('fig:battle')} Driven by emulated keystrokes, frames captured "
+        "from QEMU's frame buffer.</p>"
+        "<h3>Five minutes played over the serial port</h3>"
+        '<video controls preload="metadata" src="media/tiny-monsters-serial.mp4"></video>'
+        "<p class=\"meta\">The agent's player script, connected to the serial port, no keyboard; "
+        "it picks moves at random and restarts after each faint.</p>")
+
+
+def phases_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> str:
     items = [f'<li><a href="t/{c.sha}.html">{esc(titles[c.sha])}</a> '
              f'<span class="meta">until <a href="{GITHUB}{c.sha}">{c.sha}</a>, {when(c.when)}</span></li>'
              for c in bounds]
@@ -301,16 +320,6 @@ def index_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> s
             f"(pinned at <code>{TRAJ_REPO[1][:7]}</code>); the OS is <a href=\"https://github.com/{OS_REPO[0]}\">"
             f"{OS_REPO[0]}</a> at <code>{OS_REPO[1][:7]}</code>. Each page holds the work that ends at one "
             "phase commit; every tool call is anchored by its id.</p>"
-            '<h2 id="screencasts">Screencasts</h2>'
-            "<p>Both recorded by the agent itself, on QuineOS running in QEMU.</p>"
-            "<h3>Graphical battle screen</h3>"
-            '<video controls preload="metadata" poster="media/battle.png" src="media/tiny-monsters-gui.mp4"></video>'
-            f"<p class=\"meta\">{figure_caption('fig:battle')} Driven by emulated keystrokes, frames captured "
-            "from QEMU's frame buffer.</p>"
-            "<h3>Five minutes played over the serial port</h3>"
-            '<video controls preload="metadata" src="media/tiny-monsters-serial.mp4"></video>'
-            "<p class=\"meta\">The agent's player script, connected to the serial port, no keyboard; "
-            "it picks moves at random and restarts after each faint.</p>"
             "<h2>Transcript by phase</h2><ol>" + "".join(items) + "</ol>")
 
 
@@ -341,7 +350,8 @@ def build() -> None:
     runs = {tid: name for name, _, _, tid in log}
     (OUT / "defects.html").write_text(page(f"Defects ({len(ds)})", defects_page(ds, runs, where)))
     (OUT / "oracles.html").write_text(page(f"Oracle runs ({len(log)})", oracles_page(ds, log, where)))
-    (OUT / "index.html").write_text(page("Phases", index_page(bounds, titles, bodies)))
+    (OUT / "index.html").write_text(page("Tiny Monsters", monsters_page()))
+    (OUT / "phases.html").write_text(page("Phases", phases_page(bounds, titles, bodies)))
 
 
 # ---- link checker ---------------------------------------------------------------
