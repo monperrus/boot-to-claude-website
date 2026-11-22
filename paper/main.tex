@@ -55,13 +55,11 @@ transcripts are browsable at \url{\siteurl}.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\textwidth]{fig/battle.png}
-\caption{\emph{Tiny Monsters} on \sysname{} in QEMU, from the agent's own
-\href{\siteurl/index.html\#screencasts}{screencast}. Every pixel comes from code written by
-Claude: the game, the VGA driver, the kernel, the boot loader, and the assembler, C compiler
-and linker that built them. There is no image file in the system.}
+\caption{\emph{Tiny Monsters} is a video-game written by AI, running in an operating system written by AI, which is compiled by a compiler written by AI. There is not a single line of code written by a human in the whole stack.}
 \label{fig:battle}
 \end{figure}
 
+\newpage
 \section{Introduction}\label{sec:intro}
 
 Power on the machine. A 512-byte boot sector loads a kernel, the kernel mounts its file
@@ -96,10 +94,10 @@ Kernel: memory, drivers, CPU exceptions & the agent & AI-written kernel \\
 File system and shell & the agent & AI-written kernel \\
 Scripting language, compiled language & the agent & AI-written kernel \\
 Assembler, C compiler, linker & the agent & AI-written stack \\
-Build of the OS & the agent's toolchain only & Full bootstrap \\
-Build of the toolchain & the agent's toolchain, to a fixed point & Full bootstrap \\
+Build of the OS & the agent & Full bootstrap \\
+Build of the toolchain & the agent  & Full bootstrap \\
 \midrule
-First binary of the toolchain & the host C compiler, once & allowed exception \\
+First binary of the toolchain & the host C compiler, only once & single exception \\
 The machine & QEMU & outside the system \\
 \bottomrule
 \end{tabular}

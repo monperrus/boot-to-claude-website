@@ -29,6 +29,7 @@ from stats import (CEST, DATA, MAIN_SESSION, OS_REPO, PHASES, ROOT, SITE, TRAJ_R
 OUT = ROOT / "build" / "site"
 MEDIA = ROOT / "media"  # the screencasts the agent recorded, copied from monperrus.net
 POSTER = ROOT / "paper" / "fig" / "battle.png"
+MAIN_TEX = ROOT / "paper" / "main.tex"
 PAPER = ROOT / "build" / "paper.html"
 GITHUB = f"https://github.com/{OS_REPO[0]}/commit/"
 TRAJ_URL = f"https://github.com/{TRAJ_REPO[0]}/blob/{TRAJ_REPO[1]}/{MAIN_SESSION}"
@@ -44,6 +45,7 @@ pre{background:var(--box);padding:8px 10px;overflow-x:auto;white-space:pre-wrap;
 .ev{border-top:1px solid var(--line);padding:6px 0}.ev:target{outline:2px solid var(--acc);outline-offset:2px}
 .meta{color:var(--mut);font-size:12px}.hum{background:var(--hum);padding:6px 10px}.say{white-space:pre-wrap}
 .err pre{background:var(--err)} img,video{max-width:100%;image-rendering:pixelated}
+figure{margin:1em 0}figcaption{color:var(--mut);font-size:14px}
 table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top;font-size:13.5px}
 tr:target{outline:2px solid var(--acc)}
 """
@@ -58,8 +60,8 @@ def page(title: str, body: str, depth: int = 0) -> str:
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title>'
             f'<link rel="stylesheet" href="{up}site.css"></head><body>'
-            f'<nav><a href="{up}index.html">QuineOS evidence</a> · <a href="{up}defects.html">defects</a> · '
-            f'<a href="{up}oracles.html">oracles</a></nav>'
+            f'<nav><a href="{up}index.html">Phases</a> · <a href="{up}defects.html">Defects</a> · '
+            f'<a href="{up}oracles.html">Oracle runs</a></nav>'
             f"<h1>{esc(title)}</h1>\n{body}\n</body></html>\n")
 
 
@@ -267,6 +269,27 @@ def oracles_page(ds: list[dict], log: list, where: dict[str, str]) -> str:
     return body
 
 
+def figure_caption(label: str) -> str:
+    """The caption of the figure labelled `label` in main.tex, as HTML, so the site shows the
+    paper's caption verbatim. Fails on any LaTeX it does not translate."""
+    tex = MAIN_TEX.read_text()
+    fig = next(f for f in re.findall(r"\\begin\{figure\}.*?\\end\{figure\}", tex, re.S)
+               if f"\\label{{{label}}}" in f)
+    start = fig.index("\\caption{") + len("\\caption{")
+    depth, i = 1, start
+    while depth:
+        depth += {"{": 1, "}": -1}.get(fig[i], 0)
+        i += 1
+    cap = " ".join(esc(fig[start:i - 1]).split())
+    cap = re.sub(r"\\sysname\{\}", "QuineOS", cap)
+    cap = re.sub(r"\\href\{\\siteurl/([^}]*)\}\{([^}]*)\}", lambda m: f'<a href="{m.group(1).replace(chr(92), "")}">{m.group(2)}</a>', cap)
+    cap = re.sub(r"\\emph\{([^}]*)\}", r"<em>\1</em>", cap)
+    cap = re.sub(r"\\texttt\{([^}]*)\}", r"<code>\1</code>", cap)
+    cap = cap.replace("``", "\u201c").replace("''", "\u201d").replace("~", "\u00a0").replace("---", "\u2014")
+    assert "\\" not in cap and "{" not in cap, f"untranslated LaTeX in caption of {label}: {cap}"
+    return cap
+
+
 def index_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> str:
     items = [f'<li><a href="t/{c.sha}.html">{esc(titles[c.sha])}</a> '
              f'<span class="meta">until <a href="{GITHUB}{c.sha}">{c.sha}</a>, {when(c.when)}</span></li>'
@@ -278,6 +301,8 @@ def index_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> s
             f"(pinned at <code>{TRAJ_REPO[1][:7]}</code>); the OS is <a href=\"https://github.com/{OS_REPO[0]}\">"
             f"{OS_REPO[0]}</a> at <code>{OS_REPO[1][:7]}</code>. Each page holds the work that ends at one "
             "phase commit; every tool call is anchored by its id.</p>"
+            '<figure><img src="media/battle.png" alt="Tiny Monsters battle screen on QuineOS">'
+            f"<figcaption>{figure_caption('fig:battle')}</figcaption></figure>"
             '<h2 id="screencasts">Screencasts</h2>'
             "<p>Both recorded by the agent itself, on QuineOS running in QEMU.</p>"
             "<h3>Graphical battle screen</h3>"
@@ -316,8 +341,8 @@ def build() -> None:
     ds, log = load_defects(), oracle_runs(rows)[1]
     runs = {tid: name for name, _, _, tid in log}
     (OUT / "defects.html").write_text(page(f"Defects ({len(ds)})", defects_page(ds, runs, where)))
-    (OUT / "oracles.html").write_text(page(f"Oracles ({len(log)} runs)", oracles_page(ds, log, where)))
-    (OUT / "index.html").write_text(page("QuineOS: the evidence", index_page(bounds, titles, bodies)))
+    (OUT / "oracles.html").write_text(page(f"Oracle runs ({len(log)})", oracles_page(ds, log, where)))
+    (OUT / "index.html").write_text(page("Phases", index_page(bounds, titles, bodies)))
 
 
 # ---- link checker ---------------------------------------------------------------
