@@ -2,6 +2,7 @@
 \documentclass[11pt]{article}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{float}
 \usepackage{hyperref}
 
 \input{gen/stats}
@@ -451,7 +452,11 @@ It never fixed the cause: it worked around it by running \texttt{pkill} and the 
 separate tool calls.
 
 
+% The section starts a page and Table~\ref{tab:oracles} ([H]) sits right under its header.
+\clearpage
 \section{Oracles for Coding Agents}\label{sec:oracles}
+
+\input{gen/tab-oracles}
 
 A coding agent is as strong as the oracles it uses. The agent proposes a change, the oracle
 judges it, and the agent iterates until the oracle agrees. The outcome quality depends on the oracle: a weak one lets defects through, a missing
@@ -466,8 +471,6 @@ scripted ones \noraclesruns{} times, and \noraclesfailed{} of those runs failed.
 defects it revealed and the fixes it confirmed, and every defect links back to the oracle
 that found it: \ntfirstinrun{} of the \ntdefects{} defects were first seen in a scripted
 oracle run, and \ntconfirmedinrun{} fixes were confirmed by one.
-
-\input{gen/tab-oracles}
 
 \subsection{Three kinds of oracle}\label{sec:oraclekinds}
 

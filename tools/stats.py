@@ -633,7 +633,8 @@ def write(st: dict) -> None:
         ("Screenshots", "the graphical battle screen, from QEMU frame-buffer dumps",
          "the agent looks at the image", f"\\multicolumn{{3}}{{c}}{{{st['image_reads']} images read}}"),
     ]
-    (GEN / "tab-oracles.tex").write_text(head + "\\begin{table}[h]\n\\begin{tabular}{p{2.6cm}p{6cm}p{3cm}rrr}\n"
+    # [H] (float package): main.tex places it right under the Oracles section header.
+    (GEN / "tab-oracles.tex").write_text(head + "\\begin{table}[H]\n\\begin{tabular}{p{2.6cm}p{6cm}p{3cm}rrr}\n"
         "Oracle & What it checks & Verdict & Runs & Failed & No verdict \\\\\n\\hline\n"
         + "\n".join(" & ".join(r) + " \\\\" for r in orows) + "\n\\end{tabular}\n"
         "\\caption{The oracles of \\sysname{}. \\emph{Runs} counts the times the agent executed the "
