@@ -667,31 +667,18 @@ Tiny Monsters reverses the setup: the agent wrote the game, the OS under it and 
 toolchain that built both, and designed a text interface over the serial port so that an
 agent can play without reading pixels.
 
-\section{Conclusion}\label{sec:conclusion}
+\section{Conclusion: Built on Human Code}\label{sec:conclusion}
 
 A language model wrote a small, single-tasking operating system, then wrote the
 assembler, compiler and linker that build it, up to a byte-identical self-hosting fixed
-point. The human set goals and said ``go''. The OS was the easy part. Most of the effort
-and most of the defects went into the toolchain, and most defects were found by booting
-the machine.
-
-Beyond the system, the experiment teaches how such a system gets built. The agent was as
-good as its oracles. Most of its defects were silent, so the oracles had to compare
-against expected output, and the strongest oracle was the whole system booting. The
-oracles, written by the agent, had defects of their own, which calls for explicit rules
-of oracle design. And half of the defects left no trace in the commit history: to audit
-what an agent did, one needs its transcript.
-
-\section{Final Reflection: Built on Human Code}\label{sec:reflection}
-
-Every line of \sysname{} was written by an AI, yet the system is founded on human code,
-and will remain so. In two ways.
+point. The human set goals and said ``go''. Every line of \sysname{} was written by an AI,
+yet the system is founded on human code, and will remain so, in two ways.
 
 \paragraph{The model learned from human code.} Claude could write a boot sector, a file
 system and a C compiler because it was trained on decades of code that people wrote,
 documented and shared: operating systems, compilers, assemblers, textbooks, manuals and
-answers to questions. The agent wrote no line it copied, but it wrote none it could have
-written without that body of human work.
+answers to questions. None of \sysname{} could have been written without that body of
+human work.
 
 \paragraph{The bootstrap starts from a human compiler.} The toolchain compiles itself, but
 its very first binary, Stage~1, was produced by \texttt{gcc}, the host C compiler, a
