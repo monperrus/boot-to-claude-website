@@ -70,7 +70,19 @@ local function unnumber_paragraphs(h)
   end
 end
 
+-- \begin{adjustbox}{max width=...} only scales tables in the PDF: drop the wrapper and the
+-- option text pandoc leaves as a first paragraph.
+local function unwrap_adjustbox(div)
+  if not div.classes:includes("adjustbox") then return nil end
+  local out = pandoc.Blocks({})
+  for i, b in ipairs(div.content) do
+    if not (i == 1 and b.t == "Para") then out:insert(b) end
+  end
+  return out
+end
+
 return {
+  { Div = unwrap_adjustbox },
   { Header = unnumber_paragraphs },
   { Inline = number_equations },
   { traverse = "topdown", Div = number_table, Figure = number_figure },

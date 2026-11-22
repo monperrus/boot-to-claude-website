@@ -1,9 +1,24 @@
 % paper boot-to-claude
-\documentclass[11pt]{article}
-\usepackage{amsmath}
-\usepackage{graphicx}
-\usepackage{float}
+\documentclass{article}
+% NeurIPS 2025 style (paper/neurips_2025.sty), preprint mode: no anonymization, no line numbers.
+\PassOptionsToPackage{numbers,compress}{natbib}
+\usepackage[preprint]{neurips_2025}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{float}  % before hyperref, so [H] tables get unique anchors
 \usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{adjustbox}
+\usepackage{etoolbox}
+% Tables: small type, tight columns; adjustbox scales down any still wider than the text.
+\AtBeginEnvironment{table}{\small\setlength{\tabcolsep}{4pt}}
 
 \input{gen/stats}
 \newcommand{\sysname}{QuineOS}
@@ -176,9 +191,14 @@ Table~\ref{tab:goal} sums up what is required of each part.
 
 \begin{table}[h]
 \centering
+\caption{The goal: every part of the system and of its build, who may write or build it, and the
+claim it supports. The two parts below the line are the only ones not written by the agent.}
+\label{tab:goal}
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{lll}
+\toprule
 Part & Written or built by & Claim \\
-\hline
+\midrule
 Boot loader: boot sector, second stage & the agent & AI-written kernel \\
 Kernel: memory, drivers, CPU exceptions & the agent & AI-written kernel \\
 File system and shell & the agent & AI-written kernel \\
@@ -186,13 +206,12 @@ Scripting language, compiled language & the agent & AI-written kernel \\
 Assembler, C compiler, linker & the agent & AI-written stack \\
 Build of the OS & the agent's toolchain only & Full bootstrap \\
 Build of the toolchain & the agent's toolchain, to a fixed point & Full bootstrap \\
-\hline
+\midrule
 First binary of the toolchain & the host C compiler, once & allowed exception \\
 The machine & QEMU & outside the system \\
+\bottomrule
 \end{tabular}
-\caption{The goal: every part of the system and of its build, who may write or build it, and the
-claim it supports. The two parts below the line are the only ones not written by the agent.}
-\label{tab:goal}
+\end{adjustbox}
 \end{table}
 
 \section{\sysname}\label{sec:system}
@@ -514,13 +533,13 @@ six days.
 \paragraph{Binary verdicts.} Each scripted oracle, of whichever kind, ends with one line,
 \texttt{PASS} or \texttt{FAIL}: the expected-output comparison matched or not, the
 differential comparison agreed or not, the fixed point was reached or not. There is
-nothing to interpret. When a run produces neither, because the machine hung until the
+no room for interpretation. When a run produces neither, because the machine hung until the
 timeout, the tool under test crashed, or the build broke first, the absence of
 \texttt{PASS} is itself the failure.
 
-\subsection{How the kinds combine}\label{sec:oraclecombine}
+\subsection{How the oracles combine}\label{sec:oraclecombine}
 
-\paragraph{The kinds in time.} The three kinds took turns over the session.
+\paragraph{The kinds in time.} The three oracle kinds took turns over the session.
 Expected-output oracles ran throughout. Differential oracles ran while the old tools were
 still in the build, until the build switched over to the new toolchain (phase T7). The
 fixed-point oracle took over in phase T8, when the bootstrap removed the last reference.
@@ -553,7 +572,7 @@ oracles of Section~\ref{sec:oracles} suggest the following guidelines
 for designing oracles for coding agents. 
 
 \begin{enumerate}
-  \item \textbf{Combine the three kinds of oracle} of Section~\ref{sec:oraclekinds}. An
+  \item \textbf{Combine all kinds of oracle: expected output, differential and fixed-point} (see Section~\ref{sec:oraclekinds}). An
         oracle that only waits for an error misses silent defects: state the expected
         output and compare. Code that writes and reads its own data agrees with itself
         even when wrong: check it against a reference implementation while one exists,
@@ -572,8 +591,7 @@ for designing oracles for coding agents.
         sizes, run it once on a known-good build.
   \item \textbf{Keep the test harness out of its own way.} By test harness we mean the
         scripts and commands the agent writes to start, drive and stop the system under
-        test, here QEMU, not the coding agent's harness (Claude Code). The two meet,
-        though: the test harness runs inside the shell of the agent's tool calls. A
+        test, here QEMU, not the coding agent's harness. A
         cleanup that matches processes by a pattern can match that shell and kill the
         test run with it, which looks exactly like a broken system. Clean up by process
         id, and keep sockets, timeouts and cleanup in the test harness, never mixed
@@ -664,6 +682,9 @@ oracles, written by the agent, had defects of their own, which calls for explici
 of oracle design. And half of the defects left no trace in the commit history: to audit
 what an agent did, one needs its transcript.
 
+\bibliographystyle{abbrvnat}
+\bibliography{refs}
+
 \appendix
 
 \section*{Appendix: What the Human Did}\label{sec:human}
@@ -719,8 +740,5 @@ Table~\ref{tab:phases} gives the speed of implementation phase by phase: the tim
 code written and the agent effort between two phase commits.
 
 \input{gen/tab-phases}
-
-\bibliographystyle{plain}
-\bibliography{refs}
 
 \end{document}

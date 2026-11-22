@@ -33,8 +33,9 @@ on any link from the paper or within the site to a missing page or anchor.
 ## Layout
 
 - `paper/main.tex`, `paper/refs.bib`: the paper. Edit only these (and figures in `paper/`).
+- `paper/neurips_2025.sty`: the official NeurIPS 2025 style, used in `preprint` mode (no anonymization, no line numbers), with numeric natbib citations and `abbrvnat`.
 - `tools/template.html`: pandoc template for the page (title, styles, light/dark tokens).
-- `tools/filters.lua`: pandoc filter that numbers equations, tables and figures (caption prefixes "Table N.") and resolves `\ref`/`\eqref`.
+- `tools/filters.lua`: pandoc filter that numbers equations, tables and figures (caption prefixes "Table N."), resolves `\ref`/`\eqref`, and drops the `adjustbox` wrapper around tables (PDF-only scaling).
 - `tools/build.py`: LaTeX → `build/paper.html` (gitignored), images inlined as data URIs so the page is one file. Deterministic output.
 
 ## Workflow (every change to the paper)
@@ -58,5 +59,7 @@ The source goes through pandoc's LaTeX reader, so keep to what it supports:
 `\title \author \and \maketitle`, `abstract`, sections, `\label/\ref`, `equation`
 (numbered) / `equation*` / `\[ \]`, `\eqref`, `\cite` + `refs.bib`, `itemize/enumerate`,
 `figure` + `\includegraphics` + `\caption`, `tabular`, `\emph \textbf \texttt \url \href`.
+Tables follow the NeurIPS style: caption above, booktabs rules (`\toprule \midrule \bottomrule`),
+tabular inside `\begin{adjustbox}{max width=\linewidth}`; `stats.py` writes generated tables so.
 Custom macros defined with `\newcommand` in the preamble are expanded by pandoc.
 Check the rendered page after you use anything outside this list.

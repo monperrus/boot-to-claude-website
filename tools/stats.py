@@ -444,6 +444,18 @@ def num(n: int) -> str:
     return f"{n:,}".replace(",", "\\,")
 
 
+def booktabs(tex: str) -> str:
+    """NeurIPS table style: booktabs rules instead of \\hline, caption above the table, scaled
+    down to the text width when wider (adjustbox)."""
+    tex = re.sub(r"(\\begin\{tabular\}\{[^\n]*\}\n)", lambda m: m.group(1) + "\\toprule\n", tex, count=1)
+    tex = tex.replace("\\hline", "\\midrule").replace("\\end{tabular}", "\\bottomrule\n\\end{tabular}\n\\end{adjustbox}")
+    tex = tex.replace("\\begin{tabular}", "\\begin{adjustbox}{max width=\\linewidth}\n\\begin{tabular}", 1)
+    cap = re.search(r"\\caption\{.*?\n\\label\{[^}]*\}\n", tex, re.S)
+    assert cap, tex[:200]
+    tex = tex.replace(cap.group(0), "")
+    return re.sub(r"(\\begin\{table\}\[[^]]*\]\n(?:\\centering\n)?)", lambda m: m.group(1) + cap.group(0), tex, count=1)
+
+
 def site(path: str, text: object) -> str:
     """A link into the verification site (tools/site.py)."""
     return f"\\href{{\\siteurl/{path.replace('#', chr(92) + '#')}}}{{{text}}}"
@@ -485,7 +497,7 @@ def defect_table(ds: list[dict]) -> str:
              row("Oracle tooling", [d for d in ds if d["kind"] == "oracle"], "#oracle"),
              row("Environment", [d for d in ds if d["kind"] == "environment"], "#environment")]
     cols = " & ".join(c for c, _ in REVEALED_COLS)
-    return (head + "\\begin{table}[h]\n\\centering\n\\begin{tabular}{lrrrrrrrr}\n"
+    return head + booktabs("\\begin{table}[h]\n\\centering\n\\begin{tabular}{lrrrrrrrr}\n"
             f"Component & Defects & In commit msg. & {cols} \\\\\n\\hline\n" + "\n".join(rows) +
             "\n\\end{tabular}\n\\caption{Defects recovered from the full transcript, by component and by "
             "what revealed them. \\emph{In commit msg.} counts those that a commit message also reports. "
@@ -552,7 +564,7 @@ def write(st: dict) -> None:
     rows.append("\\hline")
     rows.append(f"after last commit & {site('t/after.html', 'screencasts, hosting')} & ---& --- & {len(a.prompts)} & "
                 f"{mins(a.active())} & {kilo(a.output_tokens)} & {a.tool_calls} \\\\")
-    (GEN / "tab-phases.tex").write_text(head + "\\begin{table}[h]\n\\centering\n"
+    (GEN / "tab-phases.tex").write_text(head + booktabs("\\begin{table}[h]\n\\centering\n"
         "\\begin{tabular}{llrrrrrr}\n"
         "Commit (CEST) & Phase & Files & Lines added & Prompts & Active min & Output ktok & Tool calls \\\\\n"
         "\\hline\n" + "\n".join(rows) + "\n\\end{tabular}\n"
@@ -560,15 +572,15 @@ def write(st: dict) -> None:
         "\\emph{Active min} sums the gaps between transcript events shorter than "
         f"{mins(IDLE)} minutes, \\emph{{Output ktok}} is thousands of tokens generated. "
         "Work between two phase commits is attributed to the later one; four minor commits "
-        "are folded into the next phase.}\n\\label{tab:phases}\n\\end{table}\n")
+        "are folded into the next phase.}\n\\label{tab:phases}\n\\end{table}\n"))
 
     size_rows = []
     for label, prefix, indent in SIZE_ROWS:
         size_rows.append(f"{'\\quad ' if indent else ''}{label} & {st['loc'].get(prefix, 0)} \\\\")
-    (GEN / "tab-size.tex").write_text(head + "\\begin{table}[h]\n\\centering\n\\begin{tabular}{lr}\n"
+    (GEN / "tab-size.tex").write_text(head + booktabs("\\begin{table}[h]\n\\centering\n\\begin{tabular}{lr}\n"
         "Component & Lines \\\\\n\\hline\n" + "\n".join(size_rows) + "\n\\end{tabular}\n"
         f"\\caption{{Size of \\texttt{{boot-to-claude}} at commit \\texttt{{{OS_REPO[1][:7]}}}, "
-        "in physical lines including comments.}\n\\label{tab:size}\n\\end{table}\n")
+        "in physical lines including comments.}\n\\label{tab:size}\n\\end{table}\n"))
 
     # The table stops at the request to play the game; later prompts are screencast
     # errands (recording, converting, hosting) and the graphical screen, quoted in the text.
@@ -581,12 +593,12 @@ def write(st: dict) -> None:
         if len(one) > 300:
             one = one[:297] + "..."
         prow.append(f"{site('t/' + anchor, t.astimezone(CEST).strftime('%b %d, %H:%M'))} & {tex_escape(one)} \\\\")
-    (GEN / "tab-prompts.tex").write_text(head + "\\begin{table}[h]\n\\begin{tabular}{lp{11cm}}\n"
+    (GEN / "tab-prompts.tex").write_text(head + booktabs("\\begin{table}[h]\n\\begin{tabular}{lp{11cm}}\n"
         "Time (CEST) & Prompt \\\\\n\\hline\n" + "\n".join(prow) + "\n\\end{tabular}\n"
         f"\\caption{{The human prompts of the session, verbatim, up to the request to play the "
         f"game. The {omitted} later prompts are about recording and hosting screencasts and "
         "the graphical battle screen.}\n"
-        "\\label{tab:prompts}\n\\end{table}\n")
+        "\\label{tab:prompts}\n\\end{table}\n"))
 
     qrows = []
     for q in st["asked"]:
@@ -595,13 +607,13 @@ def write(st: dict) -> None:
         if q["answer"] and q["answer"] not in q["options"]:
             ans += " \\emph{(free text)}"
         qrows.append(f"{when} & {tex_escape(' '.join(q['question'].split()))} & {ans} \\\\")
-    (GEN / "tab-questions.tex").write_text(head + "\\begin{table}[h]\n\\begin{tabular}{lp{7cm}p{5cm}}\n"
+    (GEN / "tab-questions.tex").write_text(head + booktabs("\\begin{table}[h]\n\\begin{tabular}{lp{7cm}p{5cm}}\n"
         "Time (CEST) & Question of the agent, verbatim & Answer of the human \\\\\n\\hline\n"
         + "\n".join(qrows) + "\n\\end{tabular}\n"
         "\\caption{The multiple-choice questions the agent asked the human. Each question offered two "
         "to four options, one of them marked \\emph{(Recommended)} by the agent; the human could also "
         "type free text. \\emph{Dismissed}: the human rejected the question and changed the request.}\n"
-        "\\label{tab:questions}\n\\end{table}\n")
+        "\\label{tab:questions}\n\\end{table}\n"))
 
     o = st["oracles"]
 
@@ -634,14 +646,14 @@ def write(st: dict) -> None:
          "the agent looks at the image", f"\\multicolumn{{3}}{{c}}{{{st['image_reads']} images read}}"),
     ]
     # [H] (float package): main.tex places it right under the Oracles section header.
-    (GEN / "tab-oracles.tex").write_text(head + "\\begin{table}[H]\n\\begin{tabular}{p{2.6cm}p{6cm}p{3cm}rrr}\n"
+    (GEN / "tab-oracles.tex").write_text(head + booktabs("\\begin{table}[H]\n\\begin{tabular}{p{2.6cm}p{6cm}p{3cm}rrr}\n"
         "Oracle & What it checks & Verdict & Runs & Failed & No verdict \\\\\n\\hline\n"
         + "\n".join(" & ".join(r) + " \\\\" for r in orows) + "\n\\end{tabular}\n"
         "\\caption{The oracles of \\sysname{}. \\emph{Runs} counts the times the agent executed the "
         "oracle during the session, each run linked to the list of runs on the verification site; "
         "\\emph{No verdict} means the output carried neither verdict, typically a hang killed by a "
         "timeout, a crash of the tool under test, or a build error before the test started.}\n"
-        "\\label{tab:oracles}\n\\end{table}\n")
+        "\\label{tab:oracles}\n\\end{table}\n"))
 
     t7_start, t7_end = st["commit_time"]["0f82a8d"], st["commit_time"]["1d62d14"]
     total_active = sum((s.active() for s in segs.values()), timedelta())
