@@ -23,8 +23,9 @@ message) is the older count, no longer used by the paper.
 `stats.py` asserts its own instrument: the transcript's `git commit` calls must match
 every agent commit, and nothing else.
 
-Verification site: `tools/site.py` renders the transcript, the defects and the oracle
-runs into `build/site/`, published by `.github/workflows/pages.yml` at the URL in
+Verification site: `tools/site.py` renders the Tiny Monsters screencasts (default page,
+`index.html`), the transcript by phase (`phases.html`), the defects and the oracle runs
+into `build/site/`, published by `.github/workflows/pages.yml` at the URL in
 `SITE` (`stats.py`), from the repo `monperrus/boot-to-claude-website`. Every tool call
 is anchored by its tool id. The paper links into it via `\siteurl` (generated tables)
 and `\defect{D-..}{text}` (prose). `tools/site.py --check` must stay silent: it fails
