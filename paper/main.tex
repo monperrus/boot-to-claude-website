@@ -80,14 +80,6 @@ while switching the build to its own toolchain. The transcript records \ntproduc
 defects found and fixed in the system, \nttoolchain{} of them in the toolchain; only
 \ntreported{} appear in a commit message.
 
-\paragraph{A game for an AI player.} The last request was for fun: a Pokémon-like game
-that an AI agent could play over the serial port. Claude wrote \emph{Tiny Monsters}, then
-a graphical battle screen in the style of the Game Boy Advance games, drawn pixel by
-pixel by its own VGA driver, and then played the game itself, \playruns{} runs in five
-minutes. Anthropic has shown Claude playing Pokémon Red~\cite{techcrunch2025pokemon};
-here Claude also wrote the game, the operating system under it, and the compiler that
-built both.
-
 \paragraph{What we learned.} Beyond this one build, the experiment yields knowledge that
 carries over to other agents and other systems:
 \begin{itemize}
@@ -95,23 +87,17 @@ carries over to other agents and other systems:
         the code, run an oracle, iterate until it passes. A defect that its oracle could not
         see stayed in until another oracle did (Section~\ref{sec:oracles}).
   \item \textbf{Most defects are silent.} \ntsilent{} of the \ntproduct{} product defects
-        produced no error message at all. An oracle that waits for an error misses them; agentic woklflow
-        has to state the expected output and compare (Section~\ref{sec:defectlist}).
+        produced no error message at all. An oracle that waits for an error misses them; agentic workflows
+        have to state the expected output and compare (Section~\ref{sec:defectlist}).
   \item \textbf{The whole system is the best test program.} Booting the OS caught
         toolchain defects that no unit test covered, because the unit tests cover only what
         the agent thought of.
   \item \textbf{The agent's oracles have defects too.} \ntoracle{} defects were in the
         oracles themselves, and the worst of them made an oracle report success after a
-        failure. Oracle design deserves its own rules (Section~\ref{sec:guidelines}).
-  \item \textbf{The commit history hides half of the story.} \ntunreported{} of the
-        \ntproduct{} product defects were found and fixed between commits and appear only in
-        the transcript. Auditing an agent requires its transcript, not only its commits.
+        failure. Oracle design is essential (Section~\ref{sec:guidelines}).
   \item \textbf{The toolchain is harder than the OS.} \nttoolchain{} of the \ntproduct{}
         product defects were in the assembler, compiler and linker. Removing the last
         human-written tool from the build was most of the work.
-  \item \textbf{The human's role shrinks to goals and go-aheads.} The human wrote no code,
-        and \ngoaheads{} of its \nprompts{} prompts only told the agent to start the next
-        phase it had planned.
 \end{itemize}
 
 \paragraph{Contributions.}
@@ -325,7 +311,7 @@ OS without a display, wrote a player that connects to QEMU's serial socket, and 
 keyboard in the loop. 
 
 
-\section{How It Was Built}\label{sec:history}
+\subsection{Process Metrics}\label{sec:history}
 
 The work happened in one Claude Code session using \sessionmodel{}, with
 \nassistant{} model responses and \ntoolcalls{} tool calls, of which \nbash{} shell
@@ -334,10 +320,6 @@ summarized \ncompactions{} times. Table~\ref{tab:phases}, in the appendix, split
 the agent. The other two are the initial empty commit and a ten-line Makefile target for
 running QEMU with a display. The agent wrote that target in response to the human's
 report that typing showed nothing, and the human ran \texttt{git commit}.
-
-\paragraph{The OS in one sitting.} The agent asked four design questions, wrote a plan,
-and the human approved it. Phases 0 to 6, from an empty boot sector to a compiler with a
-bytecode VM, followed within \plantoosmin{} minutes, without a single further prompt.
 
 \paragraph{The toolchain over four days.} Replacing the host tools took
 \tcactivehours{} hours of agent activity, about nine times the OS. The assembler had to
@@ -469,10 +451,10 @@ It never fixed the cause: it worked around it by running \texttt{pkill} and the 
 separate tool calls.
 
 
-\section{Correctness and Oracles}\label{sec:oracles}
+\section{Oracles for Coding Agents}\label{sec:oracles}
 
 A coding agent is as strong as the oracles it uses. The agent proposes a change, the oracle
-judges it, and the agent iterates until the oracle agrees. The outcome uality depends on the oracle: a weak one lets defects through, a missing
+judges it, and the agent iterates until the oracle agrees. The outcome quality depends on the oracle: a weak one lets defects through, a missing
 one leaves the agent guessing.
 Oracles
 serve twice in the loop: they reveal a defect, and they confirm its fix.
@@ -486,36 +468,6 @@ that found it: \ntfirstinrun{} of the \ntdefects{} defects were first seen in a 
 oracle run, and \ntconfirmedinrun{} fixes were confirmed by one.
 
 \input{gen/tab-oracles}
-
-\paragraph{Single observation channel.} Every oracle that runs the OS can only read
-the serial console. The kernel writes every line of output twice, to the VGA screen and
-to the COM1 serial port. Even a crash is written: the CPU exception handlers print the
-number of the faulting exception to the serial port before halting the machine. The
-oracles run QEMU without a display and save everything the serial port receives to a
-file, which the agent reads. With this design, a crash, a hang and a wrong answer all are
-text the agent can read. The agent built this channel in phase 0, before there was
-anything to test, and kept it for six days.
-
-\paragraph{Binary verdicts.} Each scripted oracle ends with one line, \texttt{PASS} or
-\texttt{FAIL}. There is nothing to interpret. When a
-run produces neither, because the machine hung until the timeout, the tool under test
-crashed, or the build broke first, the absence of \texttt{PASS} is itself the failure.
-
-\paragraph{End to end.} The OS system test boots the boot loader and kernel built by
-the toolchain under test, and drives them as a user would. Any defect anywhere on that
-path, in the assembler's encoding, the compiler's code generator or the linker's
-relocations, shows up as a wrong line on the serial console. This is what made the
-toolchain safe to replace: the OS itself is the largest test program the toolchain can use for correctness testing.
-
-\paragraph{Fast and slow oracles.} The toolchain tests run \ntoolchainfixtures{} small programs on
-the host in seconds; the OS test boots a machine. The agent ran them
-\ntoolchaintestruns{} and \nostestruns{} times respectively, iterating on the fast oracle
-and confirming on the slow one.
-
-\paragraph{Regression tests.} Switching the build over to the new toolchain (phase T7)
-is where the oracles mattered most: \ntsevenfailed{} of the \noraclesfailed{} failing oracle
-runs of the whole session happened in that phase alone. When such a failure exposed a
-defect, the agent added a regression test for its class.
 
 \subsection{Three kinds of oracle}\label{sec:oraclekinds}
 
@@ -542,9 +494,56 @@ change: the toolchain compiled by Stage~1 and by Stage~2 must be byte-identical
 (Equation~\eqref{eq:fixpoint}). It needs neither an expected value nor a reference, which
 is why it took over once the old tools were gone. It is also the weakest of the three on
 its own: a compiler that consistently miscompiles a construct its own source never uses
-still reaches a fixed point. Here the OS system test covered that gap.
+still reaches a fixed point.
 
-\section{Guidelines for Oracle Design}\label{sec:guidelines}
+\subsection{How the oracles observe and decide}\label{sec:oracleobserve}
+
+\paragraph{Single observation channel.} Every expected-output oracle that runs the OS
+compares the same thing: the text on the serial console. The kernel writes every line of
+output twice, to the VGA screen and to the COM1 serial port. Even a crash is written:
+the CPU exception handlers print the number of the faulting exception to the serial port
+before halting the machine. The oracles run QEMU without a display and save everything
+the serial port receives to a file, which the agent reads. With this design, a crash, a
+hang and a wrong answer all are text the agent can compare with the expected output. The
+agent built this channel in phase 0, before there was anything to test, and kept it for
+six days.
+
+\paragraph{Binary verdicts.} Each scripted oracle, of whichever kind, ends with one line,
+\texttt{PASS} or \texttt{FAIL}: the expected-output comparison matched or not, the
+differential comparison agreed or not, the fixed point was reached or not. There is
+nothing to interpret. When a run produces neither, because the machine hung until the
+timeout, the tool under test crashed, or the build broke first, the absence of
+\texttt{PASS} is itself the failure.
+
+\subsection{How the kinds combine}\label{sec:oraclecombine}
+
+\paragraph{The kinds in time.} The three kinds took turns over the session.
+Expected-output oracles ran throughout. Differential oracles ran while the old tools were
+still in the build, until the build switched over to the new toolchain (phase T7). The
+fixed-point oracle took over in phase T8, when the bootstrap removed the last reference.
+Switching the build over is where the oracles mattered most: \ntsevenfailed{} of the
+\noraclesfailed{} failing oracle runs of the whole session happened in phase T7 alone.
+
+\paragraph{End to end.} The OS system test is an expected-output oracle on the whole
+system. It boots the boot loader and kernel built by the toolchain under test, and drives
+them as a user would. Any defect anywhere on that path, in the assembler's encoding, the
+compiler's code generator or the linker's relocations, shows up as a wrong line on the
+serial console. It also covers the gap of the fixed-point oracle: a toolchain that
+reaches its fixed point while miscompiling something the OS uses still fails the OS
+system test. This is what made the toolchain safe to replace: the OS itself is the
+largest test program the toolchain can be checked on.
+
+\paragraph{Fast and slow expected-output oracles.} The toolchain tests and the OS system
+test are expected-output oracles at two scales. The toolchain tests run
+\ntoolchainfixtures{} small programs on the host in seconds; the OS test boots a machine.
+The agent ran them \ntoolchaintestruns{} and \nostestruns{} times respectively, iterating
+on the fast oracle and confirming on the slow one.
+
+\paragraph{Regression tests.} When a failure of the slow oracle exposed a defect, the
+agent added a regression test for its class, turning the defect into one more expected
+output of the fast oracle.
+
+\subsection{Guidelines for Oracle Design}\label{sec:guidelines}
 
 The defects of Section~\ref{sec:defectlist}, in the product and in the oracles, and the
 oracles of Section~\ref{sec:oracles} suggest the following guidelines
