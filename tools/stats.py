@@ -532,6 +532,12 @@ def defect_macros(ds: list[dict]) -> dict[str, object]:
     }
 
 
+
+# Questions left out of tab-questions.tex because they expose private infrastructure
+# (SSH host aliases); they still count in the question statistics.
+REDACTED_QUESTIONS = {"toolu_01LqMF7wTmvTrNHgQTVHaGb1"}
+
+
 def write(st: dict) -> None:
     (GEN / "tab-defects.tex").write_text(defect_table(st["tdefects"]))
     GEN.mkdir(parents=True, exist_ok=True)
@@ -603,6 +609,8 @@ def write(st: dict) -> None:
 
     qrows = []
     for q in st["asked"]:
+        if any(tool_id in q["anchor"] for tool_id in REDACTED_QUESTIONS):
+            continue
         when = site("t/" + q["anchor"], q["when"].astimezone(CEST).strftime("%b %d, %H:%M"))
         ans = tex_escape(q["answer"]) if q["answer"] else "\\emph{dismissed}"
         if q["answer"] and q["answer"] not in q["options"]:
@@ -632,9 +640,9 @@ def write(st: dict) -> None:
          f"serial output with {st['os_fixtures']} expected outputs; both languages and the game menu",
          "\\texttt{run\\_tests: PASS}", runs("os")),
         ("Serial game test", "plays a full battle over the serial port alone, then checks the shell answers",
-         "\\texttt{serial\\_game\\_test: PASS}", runs("serial")),
+         "\\texttt{serial\\_game\\_\\allowbreak{}test: PASS}", runs("serial")),
         ("Toolchain tests", f"{st['toolchain_fixtures']} C programs compiled by CC, AS and LD, run on the "
-         "host; exit code compared with the expected value", "\\texttt{run\\_toolchain\\_tests: PASS}",
+         "host; exit code compared with the expected value", "\\texttt{run\\_toolchain\\_\\allowbreak{}tests: PASS}",
          runs("toolchain")),
         ("Bootstrap fixed point", "Stage~2 and Stage~3 of AS, CC and LD are byte-identical",
          "\\texttt{bootstrap: PASS}", runs("bootstrap")),
