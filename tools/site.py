@@ -283,7 +283,7 @@ def figure_caption(label: str) -> str:
         depth += {"{": 1, "}": -1}.get(fig[i], 0)
         i += 1
     cap = " ".join(esc(fig[start:i - 1]).split())
-    cap = re.sub(r"\\sysname\{\}", "QuineOS", cap)
+    cap = re.sub(r"\\sysname\{\}", "TinyMonOS", cap)
     cap = re.sub(r"\\href\{\\siteurl/([^}]*)\}\{([^}]*)\}", lambda m: f'<a href="{m.group(1).replace(chr(92), "")}">{m.group(2)}</a>', cap)
     cap = re.sub(r"\\emph\{([^}]*)\}", r"<em>\1</em>", cap)
     cap = re.sub(r"\\texttt\{([^}]*)\}", r"<code>\1</code>", cap)
@@ -295,10 +295,10 @@ def figure_caption(label: str) -> str:
 def monsters_page() -> str:
     """The default page: the game the agent wrote and played, as screencasts."""
     return (
-        "<p>Tiny Monsters is the game the agent wrote last, on QuineOS, an operating system written by "
+        "<p>Tiny Monsters is the game the agent wrote last, on TinyMonOS, an operating system written by "
         'an AI; the <a href="phases.html">phases</a> hold the full transcript of how all of it was built.</p>'
         '<h2 id="screencasts">Screencasts</h2>'
-        "<p>Both recorded by the agent itself, on QuineOS running in QEMU.</p>"
+        "<p>Both recorded by the agent itself, on TinyMonOS running in QEMU.</p>"
         "<h3>Graphical battle screen</h3>"
         '<video controls preload="metadata" poster="media/battle.png" src="media/tiny-monsters-gui.mp4"></video>'
         f"<p class=\"meta\">{figure_caption('fig:battle')} Driven by emulated keystrokes, frames captured "
@@ -315,7 +315,7 @@ def phases_page(bounds: list, titles: dict[str, str], pages: dict[str, str]) -> 
              for c in bounds]
     if "after" in pages:
         items.append('<li><a href="t/after.html">after the last commit</a></li>')
-    return (f"<p>The evidence behind the paper on QuineOS, an operating system written by an AI. "
+    return (f"<p>The evidence behind the paper on TinyMonOS, an operating system written by an AI. "
             f"The transcript is the complete Claude Code session <a href=\"{TRAJ_URL}\">{MAIN_SESSION}</a> "
             f"(pinned at <code>{TRAJ_REPO[1][:7]}</code>); the OS is <a href=\"https://github.com/{OS_REPO[0]}\">"
             f"{OS_REPO[0]}</a> at <code>{OS_REPO[1][:7]}</code>. Each page holds the work that ends at one "

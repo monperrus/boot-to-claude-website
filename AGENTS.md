@@ -7,7 +7,7 @@ self-contained HTML page (`build/paper.html`) for reading.
 
 ## Paper
 
-Topic: Claude writes an operating system, named **QuineOS** in the paper (`\sysname` in
+Topic: Claude writes an operating system, named **TinyMonOS** in the paper (`\sysname` in
 `main.tex`). Data sources, pinned in `tools/stats.py`:
 - https://github.com/monperrus/boot-to-claude: the OS and its git history (public).
 - https://github.com/monperrus/boot-to-claude-paper: the Claude Code transcripts (public).
