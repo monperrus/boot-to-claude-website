@@ -1,7 +1,7 @@
 """Compute every number in the paper from the two data repositories; write paper/gen/*.tex.
 
 Data (cloned into data/ on first run, then checked out at the pinned commits):
-  monperrus/boot-to-claude        the OS, its git history
+  monperrus/TinyMonOS             the OS, its git history
   monperrus/boot-to-claude-paper  the Claude Code transcripts that built it
 
 Usage:
@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 GEN = ROOT / "paper" / "gen"
 
-OS_REPO = ("monperrus/boot-to-claude", "a4a64cbbb751f3498f5ab722d51df856aabcdc95")
+OS_REPO = ("monperrus/TinyMonOS", "a4a64cbbb751f3498f5ab722d51df856aabcdc95")
 TRAJ_REPO = ("monperrus/boot-to-claude-paper", "55c312c54b502399f054b9263ec39ac48b547fbc")
 MAIN_SESSION = "trajectories/03468d1c-5b29-4e24-8f0d-2a7435d227ab.jsonl"
 
@@ -575,7 +575,7 @@ def write(st: dict) -> None:
         "\\begin{tabular}{llrrrrrr}\n"
         "Commit (CEST) & Phase & Files & Lines added & Prompts & Active min & Output ktok & Tool calls \\\\\n"
         "\\hline\n" + "\n".join(rows) + "\n\\end{tabular}\n"
-        "\\caption{Phases of \\texttt{boot-to-claude}. \\emph{Prompts} counts human messages, "
+        "\\caption{Phases of \\sysname{}. \\emph{Prompts} counts human messages, "
         "\\emph{Active min} sums the gaps between transcript events shorter than "
         f"{mins(IDLE)} minutes, \\emph{{Output ktok}} is thousands of tokens generated. "
         "Work between two phase commits is attributed to the later one; four minor commits "
@@ -586,7 +586,7 @@ def write(st: dict) -> None:
         size_rows.append(f"{'\\quad ' if indent else ''}{label} & {st['loc'].get(prefix, 0)} \\\\")
     (GEN / "tab-size.tex").write_text(head + booktabs("\\begin{table}[t]\n\\centering\n\\begin{tabular}{lr}\n"
         "Component & Lines \\\\\n\\hline\n" + "\n".join(size_rows) + "\n\\end{tabular}\n"
-        f"\\caption{{Size of \\texttt{{boot-to-claude}} at commit \\texttt{{{OS_REPO[1][:7]}}}, "
+        f"\\caption{{Size of \\sysname{{}} at commit \\texttt{{{OS_REPO[1][:7]}}}, "
         "in physical lines including comments.}\n\\label{tab:size}\n\\end{table}\n"))
 
     # The table stops at the request to play the game; later prompts are screencast
